@@ -2,7 +2,7 @@ package com.ib.Tim17_Back.models;
 
 import com.ib.Tim17_Back.enums.UserRole;
 import lombok.*;
-
+import java.util.List;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 @ToString
 @Table(name = "Users")
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
@@ -36,5 +35,7 @@ public class User {
     public LocalDateTime passwordLastChanged;
     @Column
     public boolean isActivated;
+    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
+    public List<Certificate> certificates;
 
 }
