@@ -17,25 +17,27 @@ import java.time.LocalDateTime;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Long id;
+    private Long id;
     @Column
-    public String firstName;
+    private String firstName;
     @Column
-    public String lastName;
+    private String lastName;
     @Column(nullable = false, unique = true)
-    public String phoneNumber;
+    private String phoneNumber;
     @Column(nullable = false, unique = true)
-    public String email;
+    private String email;
     @Enumerated(EnumType.STRING)
     @Column
-    public UserRole role;
+    private UserRole role;
     @Column
-    public String password;
+    private String password;
     @Column
-    public LocalDateTime passwordLastChanged;
+    private LocalDateTime passwordLastChanged;
     @Column
-    public boolean isActivated;
-//    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
-//    public List<Certificate> certificates;
+    private boolean isActivated;
+    @Column
+    private String salt;
+    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
+    private List<Certificate> certificates;
 
 }
