@@ -35,7 +35,7 @@ public class User {
     public LocalDateTime passwordLastChanged;
     @Column
     public boolean isActivated;
-    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
-    public List<Certificate> certificates;
+//    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
+//    public List<Certificate> certificates;
 
 }
