@@ -126,4 +126,11 @@ public class SecurityUser implements UserDetails {
         return this.getEnabled();
     }
 
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
 }
