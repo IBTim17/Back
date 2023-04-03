@@ -24,35 +24,14 @@ public class UserController {
 
     private final UserService userService;
 
-    private final JwtTokenUtil jwtTokenUtil;
-
-    private final AuthenticationManager authenticationManager;
-
     public UserController(UserService userService, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userService = userService;
-        this.jwtTokenUtil = jwtTokenUtil;
-        this.authenticationManager = authenticationManager;
     }
 
     @PostMapping("/login")
     public ResponseEntity<TokenDTO> logIn(@Valid @RequestBody LoginDTO login) {
         try {
-
-            TokenDTO token = new TokenDTO();
-            SecurityUser userDetails = (SecurityUser) this.userService.findByUsername(login.getEmail());
-
-//            boolean isEmailConfirmed = this.passengerService.getIsEmailConfirmed(login.getEmail());
-
-            String tokenValue = this.jwtTokenUtil.generateToken(userDetails);
-            token.setToken(tokenValue);
-            token.setRefreshToken(this.jwtTokenUtil.generateRefreshToken(userDetails));
-            Authentication authentication =
-                    this.authenticationManager.authenticate(
-                            new UsernamePasswordAuthenticationToken(login.getEmail(),
-                                    login.getPassword()));
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
+            TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword());
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity(new ErrorResponseMessage(
