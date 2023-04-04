@@ -36,10 +36,7 @@ public class UserRequestValidation {
         List<HashMap<String, String>> role;
         if(isTokenExpired(token)){
             role = jwtTokenUtil.getRole(refreshToken);
-
-
         }else  role = jwtTokenUtil.getRole(token);
-
         for (String values: role.get(0).values()){
             return values;
         }
@@ -58,7 +55,7 @@ public class UserRequestValidation {
         return givenId.intValue() == id;
     }
 
-    public Integer getUserId(Map<String, String> headers) {
+    public Long getUserId(Map<String, String> headers) {
         String token = headers.get("x-auth-token");
         String refreshToken = headers.get("refreshtoken");
         if (isTokenExpired(token))
