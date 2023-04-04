@@ -17,12 +17,18 @@ import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
 import com.ib.Tim17_Back.validations.UserRequestValidation;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
+import java.io.IOException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.cert.CertificateException;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -130,10 +136,21 @@ public class CertificateRequestService implements ICertificateRequestService {
         if (request.isEmpty())
             throw new CustomException("CSR with this id not found");
         Hibernate.initialize(request);
-        if (!request.get().getOwner().getId().equals(userId))
+        Certificate issuer = certificateRepository.findBySerialNumber(request.get().getIssuerSN()).orElse(null);
+        if (issuer==null)
+            return null;
+        if (issuer.getOwner().getId().equals(userId))
             throw new CustomException("Your not alowed to approve this certificate.");
-        //request.get().setState(CertificateRequestState.ACCEPTED);
-        //TODO validation and csr signing
+        if (!this.certificateService.isValid(issuer.getSerialNumber()))
+            throw new CustomException("Issuer certificate is not valid.");
+        CertificateGenerator generator = new CertificateGenerator();
+        try {
+            generator.generateCertificate(request.get());
+        } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
+                 NoSuchAlgorithmException | NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+        request.get().setState(CertificateRequestState.ACCEPTED);
         requestRepository.save(request.get());
         return null;
 

@@ -48,6 +48,12 @@ public class CertificateService implements ICertificateService {
             certificateRepository.save(certificate);
             return false;
         }
+        if(certificate.getStartDate().isAfter(LocalDateTime.now()))
+        {
+            certificate.setValid(false);
+            certificateRepository.save(certificate);
+            return false;
+        }
         if(certificate.getIssuer() != null)
             if(!this.isValid(certificate.getIssuer().getSerialNumber())) {
                 certificate.setValid(false);

@@ -36,4 +36,14 @@ public class Certificate {
     @Column
     private String organization;
 
+    public Certificate(User owner, Certificate issuer, String serialNumber, CertificateType type, LocalDateTime startDate, LocalDateTime endDate, boolean isValid, String organization) {
+        this.owner = owner;
+        this.issuer = issuer;
+        this.serialNumber = serialNumber;
+        this.type = type;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.isValid = isValid;
+        this.organization = organization;
+    }
 }
