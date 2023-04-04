@@ -72,7 +72,7 @@ public class CertificateRequestService implements ICertificateRequestService {
             if (issuerCrt.getType() == CertificateType.END) throw new InvalidCertificateType("Issuer cannot be END certificate");
 
             // TODO check if issuer has valid crt
-            request.setIssuer(issuerCrt);
+            request.setIssuerSN(issuerCrt.getSerialNumber());
 
             if (userRole.equals("USER")) {
                 // can request INTERMEDIATE or END cert
