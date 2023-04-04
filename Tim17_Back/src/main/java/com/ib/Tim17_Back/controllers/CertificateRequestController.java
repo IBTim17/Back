@@ -1,7 +1,10 @@
 package com.ib.Tim17_Back.controllers;
 
+import com.ib.Tim17_Back.dtos.CSRApprovedDTO;
+import com.ib.Tim17_Back.dtos.CSRDeclinedDTO;
 import com.ib.Tim17_Back.dtos.CSRUserDTO;
 import com.ib.Tim17_Back.dtos.CertificateRequestDTO;
+import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.models.CertificateRequest;
 import com.ib.Tim17_Back.models.User;
 import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
@@ -57,14 +60,18 @@ public class CertificateRequestController {
 
     @PreAuthorize("hasAuthority('ROLE_USER')")
     @PutMapping("/approve/{id}")
-    public ResponseEntity<?> approveCSR(@PathVariable(value = "id", required = true) @NotNull Integer id){
-        Optional<CertificateRequest> found = certificateRequestRepository.findById(Long.valueOf(id));
-        return new ResponseEntity<>(HttpStatus.OK);
+    public ResponseEntity<?> approveCSR(@RequestHeader Map<String, String> headers,@PathVariable(value = "id", required = true) @NotNull Integer id){
+        CSRApprovedDTO approved = certificateRequestService.approveCSR(id,userRequestValidation.getUserId(headers));
+        return new ResponseEntity<>(approved,HttpStatus.OK);
     }
 
     @PreAuthorize("hasAuthority('ROLE_USER')")
     @PutMapping("/decline/{id}")
-    public ResponseEntity<?> declineCSR(CertificateRequest request){
-        return new ResponseEntity<>(HttpStatus.OK);
+    public ResponseEntity<?> declineCSR(@RequestHeader Map<String, String> headers,@PathVariable(value = "id", required = true) @NotNull Integer id){
+        Optional<CertificateRequest> found = certificateRequestRepository.findById(Long.valueOf(id));
+        if (found.isEmpty())
+            throw new CustomException("CSR with this id not found");
+        CSRDeclinedDTO declined = certificateRequestService.declineCSR(found.get(),userRequestValidation.getUserId(headers));
+        return new ResponseEntity<>(declined,HttpStatus.OK);
     }
 }
