@@ -60,14 +60,14 @@ public class CertificateRequestController {
 
     @PreAuthorize("hasAuthority('ROLE_USER')")
     @PutMapping("/approve/{id}")
-    public ResponseEntity<?> approveCSR(@RequestHeader Map<String, String> headers,@PathVariable(value = "id", required = true) @NotNull Integer id){
+    public ResponseEntity<?> approveCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Long id){
         CSRApprovedDTO approved = certificateRequestService.approveCSR(id,userRequestValidation.getUserId(headers));
         return new ResponseEntity<>(approved,HttpStatus.OK);
     }
 
     @PreAuthorize("hasAuthority('ROLE_USER')")
     @PutMapping("/decline/{id}")
-    public ResponseEntity<?> declineCSR(@RequestHeader Map<String, String> headers,@PathVariable(value = "id", required = true) @NotNull Integer id){
+    public ResponseEntity<?> declineCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Integer id){
         Optional<CertificateRequest> found = certificateRequestRepository.findById(Long.valueOf(id));
         if (found.isEmpty())
             throw new CustomException("CSR with this id not found");

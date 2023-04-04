@@ -35,7 +35,8 @@ public class CertificateRequestService implements ICertificateRequestService {
     CertificateRequestRepository requestRepository;
     @Autowired
     private UserRepository userRepository;
-
+    @Autowired
+    CertificateService certificateService;
 
     @Autowired
     UserRequestValidation userRequestValidation;
@@ -69,26 +70,25 @@ public class CertificateRequestService implements ICertificateRequestService {
         CertificateRequest request = new CertificateRequest();
         request.setOwner(owner);
         request.setType(body.getType());
-        //TODO add organization
+        request.setOrganization(body.getOrganization());
 
         if (!body.getIssuer().isEmpty()) {
             //if not creating root crt
             issuerCrt = certificateRepository.findBySerialNumber(body.getIssuer()).orElse(null);
             if (issuerCrt == null) throw new CertificateNotFoundException();
-
+            if(!this.certificateService.isValid(issuerCrt.getSerialNumber())) throw new CustomException("kurcu ne valja");
             if (issuerCrt.getType() == CertificateType.END) throw new InvalidCertificateType("Issuer cannot be END certificate");
 
-            // TODO check if issuer has valid crt
             request.setIssuerSN(issuerCrt.getSerialNumber());
 
             if (userRole.equals("USER")) {
                 // can request INTERMEDIATE or END cert
-                if (body.getType() != CertificateType.ROOT || body.getType() != CertificateType.INTERMEDIATE) throw new CustomException("This user cannot request root certificate!");
+                if (body.getType() == CertificateType.ROOT) throw new CustomException("This user cannot request root certificate!");
 
                 if (Objects.equals(issuerCrt.getOwner().getId(), userId)) {
                     request.setState(CertificateRequestState.ACCEPTED);
                     request = requestRepository.save(request);
-                    request = acceptRequest(request, userId, userRole);
+                    approveCSR(request.getId(), userId);
                     return new CSRUserDTO(request);
                 } else {
                     request.setState(CertificateRequestState.PENDING);
@@ -98,8 +98,8 @@ public class CertificateRequestService implements ICertificateRequestService {
                 }
             } else { //user is ADMIN
                 request.setState(CertificateRequestState.ACCEPTED);
-//                request = requestRepository.save(request);
-                request = acceptRequest(request, userId, userRole);
+                request = requestRepository.save(request);
+                approveCSR(request.getId(), userId);
                 return new CSRUserDTO(request);
             }
         } else {
@@ -107,19 +107,11 @@ public class CertificateRequestService implements ICertificateRequestService {
             if (!userRole.equals("ADMIN")) throw new CustomException("This user cannot request root certificate!");
 
             request.setState(CertificateRequestState.ACCEPTED);
-//            request = requestRepository.save(request);
-            request = acceptRequest(request, userId, userRole);
+            request = requestRepository.save(request);
+            approveCSR(request.getId(), userId);
 
             return new CSRUserDTO(request);
         }
-    }
-
-    private CertificateRequest acceptRequest(CertificateRequest request, Long userId, String userRole) {
-        // TODO generate keypair ...
-        if (request.getState() != CertificateRequestState.PENDING) throw new StatusNotPendingException();
-
-        request.setState(CertificateRequestState.ACCEPTED);
-        return requestRepository.save(request);
     }
 
     @Override
@@ -133,8 +125,8 @@ public class CertificateRequestService implements ICertificateRequestService {
     }
 
     @Override
-    public CSRApprovedDTO approveCSR(Integer csrId,Long userId) {
-        Optional<CertificateRequest> request = requestRepository.findById(Long.valueOf(csrId));
+    public CSRApprovedDTO approveCSR(Long csrId,Long userId) {
+        Optional<CertificateRequest> request = requestRepository.findById(csrId);
         if (request.isEmpty())
             throw new CustomException("CSR with this id not found");
         Hibernate.initialize(request);

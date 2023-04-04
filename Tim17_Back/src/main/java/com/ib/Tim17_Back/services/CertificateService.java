@@ -35,9 +35,9 @@ public class CertificateService implements ICertificateService {
     }
 
     @Override
-    public boolean isValid(String id) {
+    public boolean isValid(String serialNumber) {
         Certificate certificate = null;
-        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(id);
+        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
         if(optionalCertificate.isPresent()) certificate = optionalCertificate.get();
         else throw new CustomException("Certificate not found");
         Hibernate.initialize(certificate);

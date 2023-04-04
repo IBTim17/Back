@@ -16,7 +16,7 @@ public interface ICertificateRequestService {
 
     CSRUserDTO createRequest(CertificateRequestDTO body, Map<String, String> headers);
     public CSRDeclinedDTO declineCSR(CertificateRequest request,Long userId);
-    public CSRApprovedDTO approveCSR(Integer csrId,Long userId);
+    public CSRApprovedDTO approveCSR(Long csrId,Long userId);
 
     List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException;
 }
