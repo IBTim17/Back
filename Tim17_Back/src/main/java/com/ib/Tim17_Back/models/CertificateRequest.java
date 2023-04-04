@@ -27,4 +27,6 @@ public class CertificateRequest {
     private String organization;
     @Column
     private CertificateRequestState state;
+    @Column
+    private String rejectReason;
 }

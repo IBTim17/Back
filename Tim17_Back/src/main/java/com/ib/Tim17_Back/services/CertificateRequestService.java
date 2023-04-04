@@ -8,6 +8,8 @@ import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
 import com.ib.Tim17_Back.exceptions.*;
 import com.ib.Tim17_Back.models.Certificate;
+import com.ib.Tim17_Back.enums.CertificateRequestState;
+import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.models.CertificateRequest;
 import com.ib.Tim17_Back.models.User;
 import com.ib.Tim17_Back.repositories.CertificateRepository;
@@ -15,23 +17,28 @@ import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
 import com.ib.Tim17_Back.validations.UserRequestValidation;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+
 import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CertificateRequestService implements ICertificateRequestService {
 
     @Autowired
     CertificateRequestRepository requestRepository;
+    @Autowired
+    private UserRepository userRepository;
+
 
     @Autowired
     UserRequestValidation userRequestValidation;
-
-    @Autowired
-    UserRepository userRepository;
 
     @Autowired
     CertificateRepository certificateRepository;
@@ -116,13 +123,28 @@ public class CertificateRequestService implements ICertificateRequestService {
     }
 
     @Override
-    public CSRDeclinedDTO declineCSR(CertificateRequest request) {
+    public CSRDeclinedDTO declineCSR(CertificateRequest request,Long userId) {
+        Optional<User> foundUser = userRepository.findById(userId);
+        if (foundUser.isEmpty())
+            throw new CustomException("User does not exist.");
+        if (!request.getOwner().getEmail().equals(foundUser.get().getEmail()))
+            throw new CustomException("This is not users certificate");
         return null;
     }
 
     @Override
-    public CSRApprovedDTO approveCSR(CertificateRequest request) {
+    public CSRApprovedDTO approveCSR(Integer csrId,Long userId) {
+        Optional<CertificateRequest> request = requestRepository.findById(Long.valueOf(csrId));
+        if (request.isEmpty())
+            throw new CustomException("CSR with this id not found");
+        Hibernate.initialize(request);
+        if (!request.get().getOwner().getId().equals(userId))
+            throw new CustomException("Your not alowed to approve this certificate.");
+        //request.get().setState(CertificateRequestState.ACCEPTED);
+        //TODO validation and csr signing
+        requestRepository.save(request.get());
         return null;
+
     }
 
 }
