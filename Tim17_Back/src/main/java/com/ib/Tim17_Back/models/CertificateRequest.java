@@ -22,8 +22,7 @@ public class CertificateRequest {
     private CertificateType type;
     @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
     private User owner;
-    @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
-    private Certificate issuer;
+    private String issuerSN;
     @Column
     private String organization;
     @Column
