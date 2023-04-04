@@ -1,7 +1,9 @@
 package com.ib.Tim17_Back.controllers;
 
+import com.ib.Tim17_Back.dtos.CreateUserDTO;
 import com.ib.Tim17_Back.dtos.LoginDTO;
 import com.ib.Tim17_Back.dtos.TokenDTO;
+import com.ib.Tim17_Back.dtos.UserDTO;
 import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.security.SecurityUser;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.security.NoSuchAlgorithmException;
 
 @Controller
 @CrossOrigin
@@ -37,8 +40,17 @@ public class UserController {
             return new ResponseEntity(new ErrorResponseMessage(
                     "Bad credentials"), HttpStatus.BAD_REQUEST);
         }
-
     }
 
-
+    @PostMapping("/register")
+    public ResponseEntity<UserDTO> register(@Valid @RequestBody CreateUserDTO createUserDTO) {
+        UserDTO registeredUserDTO = null;
+        try {
+            registeredUserDTO = this.userService.register(createUserDTO);
+        } catch (NoSuchAlgorithmException e) {
+            return new ResponseEntity(new ErrorResponseMessage(
+                    "Something went wrong!"), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
+    }
 }
