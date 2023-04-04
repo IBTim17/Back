@@ -40,10 +40,10 @@ public class JwtTokenUtil {
         return (ArrayList<HashMap<String, String>>) claims.get("role");
     }
 
-    public Integer getId(String token){
+    public Long getId(String token){
         Map<String, Object> claims;
         claims = getAllClaims(token);
-        return (Integer) claims.get("id");
+        return (Long) claims.get("id");
     }
     public Date getExpirationDate(String token){
         return getClaim(token, Claims::getExpiration);
