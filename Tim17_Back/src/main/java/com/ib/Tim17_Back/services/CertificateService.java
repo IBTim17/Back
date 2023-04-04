@@ -35,9 +35,9 @@ public class CertificateService implements ICertificateService {
     }
 
     @Override
-    public boolean isValid(Long id) {
+    public boolean isValid(String serialNumber) {
         Certificate certificate = null;
-        Optional<Certificate> optionalCertificate = certificateRepository.findById(id);
+        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
         if(optionalCertificate.isPresent()) certificate = optionalCertificate.get();
         else throw new CustomException("Certificate not found");
         Hibernate.initialize(certificate);
@@ -48,8 +48,14 @@ public class CertificateService implements ICertificateService {
             certificateRepository.save(certificate);
             return false;
         }
+        if(certificate.getStartDate().isAfter(LocalDateTime.now()))
+        {
+            certificate.setValid(false);
+            certificateRepository.save(certificate);
+            return false;
+        }
         if(certificate.getIssuer() != null)
-            if(!this.isValid(certificate.getIssuer().getId())) {
+            if(!this.isValid(certificate.getIssuer().getSerialNumber())) {
                 certificate.setValid(false);
                 certificateRepository.save(certificate);
                 return false;

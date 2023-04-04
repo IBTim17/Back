@@ -5,6 +5,7 @@ import org.bouncycastle.asn1.x500.X500Name;
 
 
 import java.security.PublicKey;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Getter
@@ -17,6 +18,6 @@ public class SubjectData {
     private PublicKey publicKey;
     private X500Name x500name;
     private String serialNumber;
-    private Date startDate;
-    private Date endDate;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
 }

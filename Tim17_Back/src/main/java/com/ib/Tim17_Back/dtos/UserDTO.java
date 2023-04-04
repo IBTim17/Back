@@ -11,7 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserDTO {
-    private Long id;
     private String firstName;
 
     private String lastName;
@@ -21,7 +20,6 @@ public class UserDTO {
     private String email;
 
     public UserDTO(User user){
-        this.id = user.getId();
         this.firstName = user.getFirstName();
         this.lastName = user.getLastName();
         this.phoneNumber = user.getPhoneNumber();

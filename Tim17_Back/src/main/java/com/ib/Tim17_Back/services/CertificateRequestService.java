@@ -3,22 +3,52 @@ package com.ib.Tim17_Back.services;
 import com.ib.Tim17_Back.dtos.CSRApprovedDTO;
 import com.ib.Tim17_Back.dtos.CSRDeclinedDTO;
 import com.ib.Tim17_Back.dtos.CSRUserDTO;
+import com.ib.Tim17_Back.dtos.CertificateRequestDTO;
+import com.ib.Tim17_Back.enums.CertificateRequestState;
+import com.ib.Tim17_Back.enums.CertificateType;
+import com.ib.Tim17_Back.exceptions.*;
+import com.ib.Tim17_Back.models.Certificate;
+import com.ib.Tim17_Back.enums.CertificateRequestState;
+import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.models.CertificateRequest;
 import com.ib.Tim17_Back.models.User;
+import com.ib.Tim17_Back.repositories.CertificateRepository;
 import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
+import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
+import com.ib.Tim17_Back.validations.UserRequestValidation;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+
+import java.io.IOException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.cert.CertificateException;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CertificateRequestService implements ICertificateRequestService {
 
     @Autowired
     CertificateRequestRepository requestRepository;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    CertificateService certificateService;
+
+    @Autowired
+    UserRequestValidation userRequestValidation;
+
+    @Autowired
+    CertificateRepository certificateRepository;
 
     @Override
     public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
@@ -35,13 +65,95 @@ public class CertificateRequestService implements ICertificateRequestService {
     }
 
     @Override
-    public CSRDeclinedDTO declineCSR(CertificateRequest request) {
+    public CSRUserDTO createRequest(CertificateRequestDTO body, Map<String, String> headers) {
+        User owner = userRepository.findById(userRequestValidation.getUserId(headers)).orElse(null);
+        Long userId = userRequestValidation.getUserId(headers);
+        String userRole = userRequestValidation.getRoleFromToken(headers);
+
+        if (owner == null) throw new UserNotFoundException();
+
+        Certificate issuerCrt;
+        CertificateRequest request = new CertificateRequest();
+        request.setOwner(owner);
+        request.setType(body.getType());
+        request.setOrganization(body.getOrganization());
+
+        if (!body.getIssuer().isEmpty()) {
+            //if not creating root crt
+            issuerCrt = certificateRepository.findBySerialNumber(body.getIssuer()).orElse(null);
+            if (issuerCrt == null) throw new CertificateNotFoundException();
+            if(!this.certificateService.isValid(issuerCrt.getSerialNumber())) throw new CustomException("kurcu ne valja");
+            if (issuerCrt.getType() == CertificateType.END) throw new InvalidCertificateType("Issuer cannot be END certificate");
+
+            request.setIssuerSN(issuerCrt.getSerialNumber());
+
+            if (userRole.equals("USER")) {
+                // can request INTERMEDIATE or END cert
+                if (body.getType() == CertificateType.ROOT) throw new CustomException("This user cannot request root certificate!");
+
+                if (Objects.equals(issuerCrt.getOwner().getId(), userId)) {
+                    request.setState(CertificateRequestState.ACCEPTED);
+                    request = requestRepository.save(request);
+                    approveCSR(request.getId(), userId);
+                    return new CSRUserDTO(request);
+                } else {
+                    request.setState(CertificateRequestState.PENDING);
+                    request = requestRepository.save(request);
+
+                    return new CSRUserDTO(request);
+                }
+            } else { //user is ADMIN
+                request.setState(CertificateRequestState.ACCEPTED);
+                request = requestRepository.save(request);
+                approveCSR(request.getId(), userId);
+                return new CSRUserDTO(request);
+            }
+        } else {
+            // issuer == null / creating root crt - only if "owner" admin
+            if (!userRole.equals("ADMIN")) throw new CustomException("This user cannot request root certificate!");
+
+            request.setState(CertificateRequestState.ACCEPTED);
+            request = requestRepository.save(request);
+            approveCSR(request.getId(), userId);
+
+            return new CSRUserDTO(request);
+        }
+    }
+
+    @Override
+    public CSRDeclinedDTO declineCSR(CertificateRequest request,Long userId) {
+        Optional<User> foundUser = userRepository.findById(userId);
+        if (foundUser.isEmpty())
+            throw new CustomException("User does not exist.");
+        if (!request.getOwner().getEmail().equals(foundUser.get().getEmail()))
+            throw new CustomException("This is not users certificate");
         return null;
     }
 
     @Override
-    public CSRApprovedDTO approveCSR(CertificateRequest request) {
+    public CSRApprovedDTO approveCSR(Long csrId,Long userId) {
+        Optional<CertificateRequest> request = requestRepository.findById(csrId);
+        if (request.isEmpty())
+            throw new CustomException("CSR with this id not found");
+        Hibernate.initialize(request);
+        Certificate issuer = certificateRepository.findBySerialNumber(request.get().getIssuerSN()).orElse(null);
+        if (issuer==null)
+            return null;
+        if (issuer.getOwner().getId().equals(userId))
+            throw new CustomException("Your not alowed to approve this certificate.");
+        if (!this.certificateService.isValid(issuer.getSerialNumber()))
+            throw new CustomException("Issuer certificate is not valid.");
+        CertificateGenerator generator = new CertificateGenerator();
+        try {
+            generator.generateCertificate(request.get());
+        } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
+                 NoSuchAlgorithmException | NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+        request.get().setState(CertificateRequestState.ACCEPTED);
+        requestRepository.save(request.get());
         return null;
+
     }
 
 }
