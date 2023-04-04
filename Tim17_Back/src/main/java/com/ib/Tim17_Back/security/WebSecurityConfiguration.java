@@ -1,5 +1,6 @@
 package com.ib.Tim17_Back.security;
 
+import com.ib.Tim17_Back.security.jwt.JwtAuthenticationEntryPoint;
 import com.ib.Tim17_Back.security.jwt.JwtRequestFilter;
 import org.apache.catalina.Context;
 import org.apache.catalina.connector.Connector;
@@ -9,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;

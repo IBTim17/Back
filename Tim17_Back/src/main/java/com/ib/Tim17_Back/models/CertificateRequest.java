@@ -1,5 +1,6 @@
 package com.ib.Tim17_Back.models;
 
+import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
 import lombok.*;
 
@@ -19,12 +20,12 @@ public class CertificateRequest {
     private Long id;
     @Column
     private CertificateType type;
-
     @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
     private User owner;
-
     @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
     private User issuer;
     @Column
     private String organization;
+    @Column
+    private CertificateRequestState state;
 }

@@ -1,4 +1,4 @@
-package com.ib.Tim17_Back.security;
+package com.ib.Tim17_Back.security.jwt;
 
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
