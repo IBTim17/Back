@@ -22,9 +22,17 @@ public class CertificateController {
     }
 
     @GetMapping("/")
-    @PreAuthorize("hasRole('ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<List<CertificateDTO>> getAll() {
         List<CertificateDTO> certificates = this.certificateService.findAll();
         return new ResponseEntity<>(certificates, HttpStatus.OK);
     }
+
+    @GetMapping("/valid/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    public ResponseEntity<Boolean> validate(@PathVariable("id")Long id)
+    {
+        return new ResponseEntity<>(this.certificateService.isValid(id), HttpStatus.OK);
+    }
+
 }
