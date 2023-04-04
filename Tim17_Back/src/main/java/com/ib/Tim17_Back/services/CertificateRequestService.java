@@ -1,5 +1,7 @@
 package com.ib.Tim17_Back.services;
 
+import com.ib.Tim17_Back.dtos.CSRApprovedDTO;
+import com.ib.Tim17_Back.dtos.CSRDeclinedDTO;
 import com.ib.Tim17_Back.dtos.CSRUserDTO;
 import com.ib.Tim17_Back.dtos.CertificateRequestDTO;
 import com.ib.Tim17_Back.enums.CertificateRequestState;
@@ -35,7 +37,7 @@ public class CertificateRequestService implements ICertificateRequestService {
     CertificateRepository certificateRepository;
 
     @Override
-    public List<CSRUserDTO> usersRequests(User user) throws UsernameNotFoundException {
+    public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
         List<CertificateRequest> userRequests = requestRepository.findAll();
         List<CSRUserDTO> found = new ArrayList<>();
         if (!userRequests.isEmpty()){
@@ -50,8 +52,8 @@ public class CertificateRequestService implements ICertificateRequestService {
 
     @Override
     public CSRUserDTO createRequest(CertificateRequestDTO body, Map<String, String> headers) {
-        User owner = userRepository.findById(Long.valueOf(userRequestValidation.getUserId(headers))).orElse(null);
-        Long userId = Long.valueOf(userRequestValidation.getUserId(headers));
+        User owner = userRepository.findById(userRequestValidation.getUserId(headers)).orElse(null);
+        Long userId = userRequestValidation.getUserId(headers);
         String userRole = userRequestValidation.getRoleFromToken(headers);
 
         if (owner == null) throw new UserNotFoundException();
@@ -111,6 +113,16 @@ public class CertificateRequestService implements ICertificateRequestService {
 
         request.setState(CertificateRequestState.ACCEPTED);
         return requestRepository.save(request);
+    }
+
+    @Override
+    public CSRDeclinedDTO declineCSR(CertificateRequest request) {
+        return null;
+    }
+
+    @Override
+    public CSRApprovedDTO approveCSR(CertificateRequest request) {
+        return null;
     }
 
 }

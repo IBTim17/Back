@@ -47,15 +47,15 @@ public class UserRequestValidation {
         String token = headers.get("x-auth-token");
         String refreshToken = headers.get("refreshtoken");
         if(isTokenExpired(token)){
-            Integer id = jwtTokenUtil.getId(refreshToken);
+            Long id = jwtTokenUtil.getId(refreshToken);
             return givenId.intValue() == id;
 
         }
-        Integer id = jwtTokenUtil.getId(token);
+        Long id = jwtTokenUtil.getId(token);
         return givenId.intValue() == id;
     }
 
-    public Integer getUserId(Map<String, String> headers) {
+    public Long getUserId(Map<String, String> headers) {
         String token = headers.get("x-auth-token");
         String refreshToken = headers.get("refreshtoken");
         if (isTokenExpired(token))
