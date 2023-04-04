@@ -19,12 +19,12 @@ import javax.persistence.ManyToOne;
 @ToString
 public class CSRUserDTO {
     private CertificateType type;
-    private User issuer;
+    private String issuer;
     private String organization;
     private CertificateRequestState state;
     public CSRUserDTO(CertificateRequest request) {
         this.setType(request.getType());
-        this.setIssuer(request.getIssuer());
+//        this.setIssuer(request.getIssuer().getEmail());
         this.setOrganization(request.getOrganization());
         this.setState(request.getState());
     }

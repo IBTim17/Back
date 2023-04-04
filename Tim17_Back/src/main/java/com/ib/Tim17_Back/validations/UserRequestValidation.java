@@ -55,7 +55,7 @@ public class UserRequestValidation {
         return givenId.intValue() == id;
     }
 
-    public Long getUserId(Map<String, String> headers) {
+    public Integer getUserId(Map<String, String> headers) {
         String token = headers.get("x-auth-token");
         String refreshToken = headers.get("refreshtoken");
         if (isTokenExpired(token))
