@@ -40,6 +40,7 @@ public class CertificateService implements ICertificateService {
         Optional<Certificate> optionalCertificate = certificateRepository.findById(id);
         if(optionalCertificate.isPresent()) certificate = optionalCertificate.get();
         else throw new CustomException("Certificate not found");
+        Hibernate.initialize(certificate);
         if(!certificate.isValid()) return false;
         if(certificate.getEndDate().isBefore(LocalDateTime.now()))
         {
