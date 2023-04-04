@@ -1,5 +1,7 @@
 package com.ib.Tim17_Back.services;
 
+import com.ib.Tim17_Back.dtos.CSRApprovedDTO;
+import com.ib.Tim17_Back.dtos.CSRDeclinedDTO;
 import com.ib.Tim17_Back.dtos.CSRUserDTO;
 import com.ib.Tim17_Back.models.CertificateRequest;
 import com.ib.Tim17_Back.models.User;
@@ -30,6 +32,16 @@ public class CertificateRequestService implements ICertificateRequestService {
             }
         }
         return found;
+    }
+
+    @Override
+    public CSRDeclinedDTO declineCSR(CertificateRequest request) {
+        return null;
+    }
+
+    @Override
+    public CSRApprovedDTO approveCSR(CertificateRequest request) {
+        return null;
     }
 
 }
