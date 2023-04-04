@@ -21,7 +21,7 @@ public class CertificateRequestService implements ICertificateRequestService {
     CertificateRequestRepository requestRepository;
 
     @Override
-    public List<CSRUserDTO> usersRequests(User user) throws UsernameNotFoundException {
+    public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
         List<CertificateRequest> userRequests = requestRepository.findAll();
         List<CSRUserDTO> found = new ArrayList<>();
         if (!userRequests.isEmpty()){
