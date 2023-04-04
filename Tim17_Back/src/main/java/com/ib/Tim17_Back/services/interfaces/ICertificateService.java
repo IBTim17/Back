@@ -11,5 +11,5 @@ import java.util.List;
 public interface ICertificateService {
     List<CertificateDTO> findAll();
 
-    boolean isValid(Long id);
+    boolean isValid(String id);
 }

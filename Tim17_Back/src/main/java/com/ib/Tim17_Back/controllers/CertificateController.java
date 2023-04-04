@@ -28,11 +28,11 @@ public class CertificateController {
         return new ResponseEntity<>(certificates, HttpStatus.OK);
     }
 
-    @GetMapping("/valid/{id}")
+    @GetMapping("/valid")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Boolean> validate(@PathVariable("id")Long id)
+    public ResponseEntity<Boolean> validate(@RequestParam String serialNumber)
     {
-        return new ResponseEntity<>(this.certificateService.isValid(id), HttpStatus.OK);
+        return new ResponseEntity<>(this.certificateService.isValid(serialNumber), HttpStatus.OK);
     }
 
 }
