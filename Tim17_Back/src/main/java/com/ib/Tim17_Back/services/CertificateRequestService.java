@@ -1,9 +1,6 @@
 package com.ib.Tim17_Back.services;
 
-import com.ib.Tim17_Back.dtos.CSRApprovedDTO;
-import com.ib.Tim17_Back.dtos.CSRDeclinedDTO;
-import com.ib.Tim17_Back.dtos.CSRUserDTO;
-import com.ib.Tim17_Back.dtos.CertificateRequestDTO;
+import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
 import com.ib.Tim17_Back.exceptions.*;
@@ -129,20 +126,24 @@ public class CertificateRequestService implements ICertificateRequestService {
                      NoSuchProviderException | OperatorCreationException e) {
                 throw new RuntimeException(e);
             }
-
-
             return new CSRUserDTO(request);
         }
     }
 
     @Override
-    public CSRDeclinedDTO declineCSR(CertificateRequest request,Long userId) {
+    public MessageResponseDTO declineCSR(Long csrId, Long userId, RejectionDTO reasonDTO) {
+        Optional<CertificateRequest> request = requestRepository.findById(csrId);
+        if (request.isEmpty())
+            throw new CustomException("CSR with this id not found");
         Optional<User> foundUser = userRepository.findById(userId);
         if (foundUser.isEmpty())
             throw new CustomException("User does not exist.");
-        if (!request.getOwner().getEmail().equals(foundUser.get().getEmail()))
+        if (!request.get().getOwner().getEmail().equals(foundUser.get().getEmail()))
             throw new CustomException("This is not users certificate");
-        return null;
+        request.get().setState(CertificateRequestState.DENIED);
+        request.get().setRejectReason(reasonDTO.getReason());
+        requestRepository.save(request.get());
+        return new MessageResponseDTO("Successfully deined certificate.");
     }
 
     @Override
