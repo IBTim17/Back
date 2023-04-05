@@ -59,12 +59,12 @@ public class CertificateRequestController {
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @PutMapping("/approve/{id}")
     public ResponseEntity<?> approveCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Long id){
-        CSRApprovedDTO approved = certificateRequestService.approveCSR(id,userRequestValidation.getUserId(headers));
-        return new ResponseEntity<>(approved,HttpStatus.OK);
+        MessageResponseDTO approved = certificateRequestService.approveCSR(id, userRequestValidation.getUserId(headers));
+        return new ResponseEntity<>(approved, HttpStatus.OK);
     }
 
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    @PutMapping(value = "/decline/{id}",consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/decline/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> declineCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Long id, @RequestBody RejectionDTO reason){
         MessageResponseDTO responseDTO = certificateRequestService.declineCSR(id,userRequestValidation.getUserId(headers),reason);
         return new ResponseEntity<>(responseDTO, HttpStatus.OK);

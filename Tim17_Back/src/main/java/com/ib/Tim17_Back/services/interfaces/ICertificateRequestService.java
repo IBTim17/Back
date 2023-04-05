@@ -12,7 +12,7 @@ import java.util.Map;
 public interface ICertificateRequestService {
 
     CSRUserDTO createRequest(CertificateRequestDTO body, Map<String, String> headers);
-    public MessageResponseDTO declineCSR(Long csrId, Long userId, RejectionDTO reason);
-    public CSRApprovedDTO approveCSR(Long csrId, Long userId);
+    MessageResponseDTO declineCSR(Long csrId, Long userId, RejectionDTO reason);
+    MessageResponseDTO approveCSR(Long csrId, Long userId);
     List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException;
 }

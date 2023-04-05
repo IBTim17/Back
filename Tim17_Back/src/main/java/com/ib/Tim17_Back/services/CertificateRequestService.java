@@ -5,7 +5,6 @@ import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
 import com.ib.Tim17_Back.exceptions.*;
 import com.ib.Tim17_Back.models.Certificate;
-import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.models.CertificateRequest;
 import com.ib.Tim17_Back.models.User;
@@ -110,7 +109,13 @@ public class CertificateRequestService implements ICertificateRequestService {
             } else { //user is ADMIN
                 request.setState(CertificateRequestState.ACCEPTED);
                 request = requestRepository.save(request);
-                approveCSR(request.getId(), userId);
+                try {
+                    generator.generateCertificate(request);
+                } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
+                         NoSuchAlgorithmException | NoSuchProviderException e) {
+                    throw new RuntimeException(e);
+                }
+//                approveCSR(request.getId(), userId);
                 return new CSRUserDTO(request);
             }
         } else {
@@ -119,7 +124,7 @@ public class CertificateRequestService implements ICertificateRequestService {
 
             request.setState(CertificateRequestState.ACCEPTED);
             request = requestRepository.save(request);
-//            approveCSR(request.getId(), userId);
+
             try {
                 generator.generateSelfSignedCertificate(request);
             } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException |
@@ -133,21 +138,22 @@ public class CertificateRequestService implements ICertificateRequestService {
     @Override
     public MessageResponseDTO declineCSR(Long csrId, Long userId, RejectionDTO reasonDTO) {
         Optional<CertificateRequest> request = requestRepository.findById(csrId);
+        Optional<Certificate> certificate = certificateRepository.findBySerialNumber(request.get().getIssuerSN());
         if (request.isEmpty())
             throw new CustomException("CSR with this id not found");
         Optional<User> foundUser = userRepository.findById(userId);
         if (foundUser.isEmpty())
             throw new CustomException("User does not exist.");
-        if (!request.get().getOwner().getEmail().equals(foundUser.get().getEmail()))
+        if (!certificate.get().getOwner().getEmail().equals(foundUser.get().getEmail()))
             throw new CustomException("This is not users certificate");
         request.get().setState(CertificateRequestState.DENIED);
         request.get().setRejectReason(reasonDTO.getReason());
         requestRepository.save(request.get());
-        return new MessageResponseDTO("Successfully deined certificate.");
+        return new MessageResponseDTO("Successfully denied certificate.");
     }
 
     @Override
-    public CSRApprovedDTO approveCSR(Long csrId,Long userId) {
+    public MessageResponseDTO approveCSR(Long csrId, Long userId) {
         Optional<CertificateRequest> request = requestRepository.findById(csrId);
         if (request.isEmpty())
             throw new CustomException("CSR with this id not found");
@@ -155,11 +161,10 @@ public class CertificateRequestService implements ICertificateRequestService {
         Certificate issuer = certificateRepository.findBySerialNumber(request.get().getIssuerSN()).orElse(null);
         if (issuer==null)
             return null;
-        if (issuer.getOwner().getId().equals(userId))
-            throw new CustomException("Your not alowed to approve this certificate.");
+        if (!issuer.getOwner().getId().equals(userId))
+            throw new CustomException("Your not allowed to approve this certificate.");
         if (!this.certificateService.isValid(issuer.getSerialNumber()))
             throw new CustomException("Issuer certificate is not valid.");
-//        CertificateGenerator generator = new CertificateGenerator();
         try {
             generator.generateCertificate(request.get());
         } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
@@ -168,7 +173,7 @@ public class CertificateRequestService implements ICertificateRequestService {
         }
         request.get().setState(CertificateRequestState.ACCEPTED);
         requestRepository.save(request.get());
-        return null;
+        return new MessageResponseDTO("Certificate approved");
 
     }
 
