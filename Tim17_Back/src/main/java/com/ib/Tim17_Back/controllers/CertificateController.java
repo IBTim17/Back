@@ -1,7 +1,6 @@
 package com.ib.Tim17_Back.controllers;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
-import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,12 +29,10 @@ public class CertificateController {
     }
 
     @GetMapping("/valid/{serialNumber}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<ErrorResponseMessage> validate(@PathVariable String serialNumber)
+//    @PreAuthorize("hasAnyRole('ADMIN', 'USER')") TODO test
+    public ResponseEntity<Boolean> validate(@PathVariable String serialNumber)
     {
-        if (this.certificateService.isValid(serialNumber))
-            return new ResponseEntity<>(new ErrorResponseMessage("Certificate is valid!"), HttpStatus.OK);
-        return new ResponseEntity<>(new ErrorResponseMessage("Certificate is nije valid!"), HttpStatus.OK);
+        return new ResponseEntity<>(this.certificateService.isValid(serialNumber), HttpStatus.OK);
     }
 
 }
