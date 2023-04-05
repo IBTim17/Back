@@ -2,6 +2,8 @@ package com.ib.Tim17_Back.models;
 
 import com.ib.Tim17_Back.enums.UserRole;
 import lombok.*;
+import org.springframework.lang.Nullable;
+
 import java.util.List;
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -35,9 +37,7 @@ public class User {
     private LocalDateTime passwordLastChanged;
     @Column
     private boolean isActivated;
-    @Column
-    private String salt;
-    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
-    private List<Certificate> certificates;
+//    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.EAGER)
+//    private List<Certificate> certificates;
 
 }

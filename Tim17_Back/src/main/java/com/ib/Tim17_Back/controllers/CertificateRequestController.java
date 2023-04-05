@@ -13,6 +13,7 @@ import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
 import com.ib.Tim17_Back.validations.UserRequestValidation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -41,7 +42,7 @@ public class CertificateRequestController {
     @Autowired
     CertificateRequestRepository certificateRequestRepository;
 
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping("/list-all")
     public ResponseEntity<?> userRequests(@RequestHeader Map<String, String> headers){
         Optional<User> user = userRepository.findById(Long.valueOf(userRequestValidation.getUserId(headers)));
@@ -51,21 +52,21 @@ public class CertificateRequestController {
         return new ResponseEntity<>(usersRequests,HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @PostMapping()
     public ResponseEntity<?> createRequests(@Valid @RequestBody CertificateRequestDTO body, @RequestHeader Map<String, String> headers) {
         CSRUserDTO request = certificateRequestService.createRequest(body, headers);
         return new ResponseEntity<>(request, HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @PutMapping("/approve/{id}")
     public ResponseEntity<?> approveCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Long id){
         CSRApprovedDTO approved = certificateRequestService.approveCSR(id,userRequestValidation.getUserId(headers));
         return new ResponseEntity<>(approved,HttpStatus.OK);
     }
 
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @PutMapping("/decline/{id}")
     public ResponseEntity<?> declineCSR(@RequestHeader Map<String, String> headers, @PathVariable(value = "id", required = true) @NotNull Integer id){
         Optional<CertificateRequest> found = certificateRequestRepository.findById(Long.valueOf(id));

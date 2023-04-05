@@ -43,7 +43,7 @@ public class JwtTokenUtil {
     public Long getId(String token){
         Map<String, Object> claims;
         claims = getAllClaims(token);
-        return (Long) claims.get("id");
+        return Long.valueOf(claims.get("id").toString());
     }
     public Date getExpirationDate(String token){
         return getClaim(token, Claims::getExpiration);

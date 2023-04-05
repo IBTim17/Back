@@ -24,7 +24,7 @@ public class CSRUserDTO {
     private CertificateRequestState state;
     public CSRUserDTO(CertificateRequest request) {
         this.setType(request.getType());
-//        this.setIssuer(request.getIssuer().getEmail());
+        this.setIssuer(request.getIssuerSN());
         this.setOrganization(request.getOrganization());
         this.setState(request.getState());
     }

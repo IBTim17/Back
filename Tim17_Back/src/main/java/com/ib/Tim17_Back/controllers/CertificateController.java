@@ -1,6 +1,7 @@
 package com.ib.Tim17_Back.controllers;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
+import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,18 +22,20 @@ public class CertificateController {
         this.certificateService = certificateService;
     }
 
-    @GetMapping("/")
+    @GetMapping()
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<List<CertificateDTO>> getAll() {
         List<CertificateDTO> certificates = this.certificateService.findAll();
         return new ResponseEntity<>(certificates, HttpStatus.OK);
     }
 
-    @GetMapping("/valid")
+    @GetMapping("/valid/{serialNumber}")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Boolean> validate(@RequestParam String serialNumber)
+    public ResponseEntity<ErrorResponseMessage> validate(@PathVariable String serialNumber)
     {
-        return new ResponseEntity<>(this.certificateService.isValid(serialNumber), HttpStatus.OK);
+        if (this.certificateService.isValid(serialNumber))
+            return new ResponseEntity<>(new ErrorResponseMessage("Certificate is valid!"), HttpStatus.OK);
+        return new ResponseEntity<>(new ErrorResponseMessage("Certificate is nije valid!"), HttpStatus.OK);
     }
 
 }

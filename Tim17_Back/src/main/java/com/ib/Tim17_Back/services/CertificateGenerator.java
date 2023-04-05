@@ -19,7 +19,9 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -36,13 +38,18 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.UUID;
 
+@Service
 public class CertificateGenerator {
 
     @Autowired
     private CertificateRepository certificateRepository;
 
+//    public CertificateGenerator(CertificateRepository certificateRepository) {
+//        this.certificateRepository = certificateRepository;
+//    }
+
     public void generateRootCertificate(CertificateDTO certificateDTO) throws CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException, NoSuchProviderException {
-        KeyStore keyStore = KeyStoreUtil.loadKeyStore(null, null);
+//        KeyStore keyStore = KeyStoreUtil.loadKeyStore(null, null);
     }
 
     public void generateSelfSignedCertificate(){
@@ -50,7 +57,7 @@ public class CertificateGenerator {
     }
 
     public void generateCertificate(CertificateRequest request) throws CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException, NoSuchProviderException, OperatorCreationException {
-        KeyStore keyStore = KeyStoreUtil.loadKeyStore(null, null);
+//        KeyStore keyStore = KeyStoreUtil.loadKeyStore(null, null);
         KeyPair keyPair = generateKeyPair();
 
         X500Name subjectData = generateSubjectData(request);
@@ -61,7 +68,7 @@ public class CertificateGenerator {
         if (request.getType().equals(CertificateType.INTERMEDIATE))
             endDate = endDate.plusYears(4);
 
-        String serialNumber = UUID.randomUUID().toString();
+        String serialNumber = UUID.randomUUID().toString().replace("-", "");
 
         JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
         builder = builder.setProvider("BC");
@@ -69,7 +76,44 @@ public class CertificateGenerator {
 
         X509v3CertificateBuilder certGen = new JcaX509v3CertificateBuilder(
                 issuerData,
-                new BigInteger(serialNumber),
+                new BigInteger(serialNumber, 16),
+                Date.from(startDate.atZone(ZoneId.systemDefault()).toInstant()),
+                Date.from(endDate.atZone(ZoneId.systemDefault()).toInstant()),
+                subjectData,
+                keyPair.getPublic());
+
+        X509CertificateHolder certHolder = certGen.build(contentSigner);
+        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter();
+        certConverter = certConverter.setProvider("BC");
+        X509Certificate certificate = certConverter.getCertificate(certHolder);
+        Hibernate.initialize(request);
+        Certificate certificateDB = new Certificate(request.getOwner(), this.certificateRepository.findBySerialNumber(request.getIssuerSN()).get(), serialNumber ,request.getType(), startDate, endDate, true, request.getOrganization());
+        Hibernate.initialize(certificateDB);
+        this.saveCertificate(certificate, certificateDB, keyPair);
+    }
+
+    public void generateSelfSignedCertificate(CertificateRequest request) throws CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException, NoSuchProviderException, OperatorCreationException {
+//        KeyStore keyStore = KeyStoreUtil.loadKeyStore(null, null);
+        KeyPair keyPair = generateKeyPair();
+
+        X500Name subjectData = generateSubjectData(request);
+
+        LocalDateTime startDate = LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime endDate = startDate.plusYears(1);
+        if (request.getType().equals(CertificateType.INTERMEDIATE))
+            endDate = endDate.plusYears(4);
+        else if (request.getType().equals(CertificateType.ROOT))
+            endDate = endDate.plusYears(9);
+
+        String serialNumber = UUID.randomUUID().toString().replace("-", "");
+
+        JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256WithRSAEncryption");
+        builder = builder.setProvider("BC");
+        ContentSigner contentSigner = builder.build(keyPair.getPrivate());
+
+        X509v3CertificateBuilder certGen = new JcaX509v3CertificateBuilder(
+                subjectData,
+                new BigInteger(serialNumber, 16),
                 Date.from(startDate.atZone(ZoneId.systemDefault()).toInstant()),
                 Date.from(endDate.atZone(ZoneId.systemDefault()).toInstant()),
                 subjectData,
@@ -80,7 +124,9 @@ public class CertificateGenerator {
         certConverter = certConverter.setProvider("BC");
         X509Certificate certificate = certConverter.getCertificate(certHolder);
 
-        Certificate certificateDB = new Certificate(request.getOwner(), this.certificateRepository.findBySerialNumber(request.getIssuerSN()).get(), serialNumber ,request.getType(), startDate, endDate, true, request.getOrganization());
+//        System.out.println(this.certificateRepository.findBySerialNumber(request.getIssuerSN()).get());
+        Certificate certificateDB = new Certificate(request.getOwner(), this.certificateRepository.findBySerialNumber(request.getIssuerSN()).orElse(null), serialNumber ,request.getType(), startDate, endDate, true, request.getOrganization());
+//        Hibernate.initialize(certificateDB);
         this.saveCertificate(certificate, certificateDB, keyPair);
     }
 

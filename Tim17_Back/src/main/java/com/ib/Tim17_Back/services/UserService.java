@@ -12,11 +12,13 @@ import com.ib.Tim17_Back.security.SecurityUser;
 import com.ib.Tim17_Back.security.UserFactory;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.IUserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,15 +36,15 @@ import java.util.regex.Pattern;
 public class UserService implements IUserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final BCryptPasswordEncoder passwordEncoder;
     private final SaltGenerator saltGenerator;
     private final JwtTokenUtil jwtTokenUtil;
 
     private final AuthenticationManager authenticationManager;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
+    public UserService(UserRepository userRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.passwordEncoder = new BCryptPasswordEncoder();
         this.saltGenerator = saltGenerator;
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
@@ -58,7 +61,8 @@ public class UserService implements IUserService {
     @Override
     public TokenDTO logIn(String email, String password) throws Exception {
 
-        if(!this.verifyPassword(email, password)) throw new Exception();
+        if(!this.verifyPassword(email, password)) throw new CustomException(";fehfehoehf");
+        System.out.println("jeeej");
 
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         TokenDTO token = new TokenDTO();
@@ -78,16 +82,14 @@ public class UserService implements IUserService {
         validateRegistration(createUserDTO);
 
         User user = new User();
+        user.setFirstName(createUserDTO.getFirstName());
+        user.setLastName(createUserDTO.getLastName());
         user.setEmail(createUserDTO.getEmail());
         user.setActivated(false);
         user.setPasswordLastChanged(LocalDateTime.now());
         user.setRole(UserRole.USER);
         user.setPhoneNumber(createUserDTO.getPhoneNumber());
-
-        String salt = this.saltGenerator.generateSalt();
-        String hashedPassword = hashPassword(createUserDTO.getPassword(), salt.getBytes());
-        user.setSalt(salt);
-        user.setPassword(hashedPassword);
+        user.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
         userRepository.save(user);
 
         return new UserDTO(user);
@@ -99,23 +101,15 @@ public class UserService implements IUserService {
         return passwordEncoder.encode(saltedPassword);
     }
 
-    private boolean verifyPassword(String username, String password) {
+    private boolean verifyPassword(String username, String password) throws NoSuchAlgorithmException {
         Optional<User> user = userRepository.findByEmail(username);
         if (user.isEmpty()) {
             return false;
         }
-        String salt = user.get().getSalt();
-        String saltedPassword = salt + password;
         String passwordDigest = user.get().getPassword();
-        return passwordEncoder.matches(saltedPassword, passwordDigest);
+        return passwordEncoder.matches(password, passwordDigest);
     }
 
-    private String hashPassword(String password, byte[] salt) throws NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] saltedPassword = (password + new String(salt, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8);
-        byte[] hashedPassword = digest.digest(saltedPassword);
-        return new String(hashedPassword, StandardCharsets.UTF_8);
-    }
 
 
     private void validateRegistration(CreateUserDTO createUserDTO) {
@@ -125,8 +119,8 @@ public class UserService implements IUserService {
     }
 
     private boolean isPasswordValid(String password, String repeatedPassword) {
-        if(password != repeatedPassword) return false;
-        String passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
+        if(!Objects.equals(password, repeatedPassword)) return false;
+        String passwordPattern = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$ %^&*-]).{8,}$";
         Pattern pattern = Pattern.compile(passwordPattern);
         Matcher matcher = pattern.matcher(password);
         return matcher.matches();
@@ -134,7 +128,7 @@ public class UserService implements IUserService {
 
     private boolean isEmailValid(String email) {
         if(this.userRepository.findByEmail(email).isPresent()) return false;
-        String mailPattern = "^([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+)\\\\.([a-zA-Z]{2,})$";
+        String mailPattern = "^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$";
         Pattern pattern = Pattern.compile(mailPattern);
         Matcher matcher = pattern.matcher(email);
         return matcher.matches();
@@ -142,8 +136,8 @@ public class UserService implements IUserService {
 
     private boolean isPhoneNumberValid(String phoneNumber) {
         if(this.userRepository.findByPhoneNumber(phoneNumber).isPresent()) return false;
-        String mailPattern = "\"^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$\"";
-        Pattern pattern = Pattern.compile(mailPattern);
+        String phonePattern = "^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$";
+        Pattern pattern = Pattern.compile(phonePattern);
         Matcher matcher = pattern.matcher(phoneNumber);
         return matcher.matches();
     }

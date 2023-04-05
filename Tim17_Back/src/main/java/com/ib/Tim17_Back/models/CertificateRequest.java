@@ -20,7 +20,7 @@ public class CertificateRequest {
     private Long id;
     @Column
     private CertificateType type;
-    @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.LAZY)
+    @ManyToOne(cascade = {CascadeType.REFRESH}, fetch = FetchType.EAGER)
     private User owner;
     private String issuerSN;
     @Column

@@ -50,6 +50,10 @@ public class CertificateRequestService implements ICertificateRequestService {
     @Autowired
     CertificateRepository certificateRepository;
 
+    @Autowired
+    CertificateGenerator generator;
+
+
     @Override
     public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
         List<CertificateRequest> userRequests = requestRepository.findAll();
@@ -78,11 +82,11 @@ public class CertificateRequestService implements ICertificateRequestService {
         request.setType(body.getType());
         request.setOrganization(body.getOrganization());
 
-        if (!body.getIssuer().isEmpty()) {
+        if (body.getIssuer() != null) {
             //if not creating root crt
             issuerCrt = certificateRepository.findBySerialNumber(body.getIssuer()).orElse(null);
             if (issuerCrt == null) throw new CertificateNotFoundException();
-            if(!this.certificateService.isValid(issuerCrt.getSerialNumber())) throw new CustomException("kurcu ne valja");
+            if(!this.certificateService.isValid(issuerCrt.getSerialNumber())) throw new CustomException("Certificate is not valid!");
             if (issuerCrt.getType() == CertificateType.END) throw new InvalidCertificateType("Issuer cannot be END certificate");
 
             request.setIssuerSN(issuerCrt.getSerialNumber());
@@ -94,12 +98,16 @@ public class CertificateRequestService implements ICertificateRequestService {
                 if (Objects.equals(issuerCrt.getOwner().getId(), userId)) {
                     request.setState(CertificateRequestState.ACCEPTED);
                     request = requestRepository.save(request);
-                    approveCSR(request.getId(), userId);
+                    try {
+                        generator.generateSelfSignedCertificate(request);
+                    } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException |
+                             NoSuchProviderException | OperatorCreationException e) {
+                        throw new RuntimeException(e);
+                    }
                     return new CSRUserDTO(request);
                 } else {
                     request.setState(CertificateRequestState.PENDING);
                     request = requestRepository.save(request);
-
                     return new CSRUserDTO(request);
                 }
             } else { //user is ADMIN
@@ -114,7 +122,14 @@ public class CertificateRequestService implements ICertificateRequestService {
 
             request.setState(CertificateRequestState.ACCEPTED);
             request = requestRepository.save(request);
-            approveCSR(request.getId(), userId);
+//            approveCSR(request.getId(), userId);
+            try {
+                generator.generateSelfSignedCertificate(request);
+            } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException |
+                     NoSuchProviderException | OperatorCreationException e) {
+                throw new RuntimeException(e);
+            }
+
 
             return new CSRUserDTO(request);
         }
@@ -143,7 +158,7 @@ public class CertificateRequestService implements ICertificateRequestService {
             throw new CustomException("Your not alowed to approve this certificate.");
         if (!this.certificateService.isValid(issuer.getSerialNumber()))
             throw new CustomException("Issuer certificate is not valid.");
-        CertificateGenerator generator = new CertificateGenerator();
+//        CertificateGenerator generator = new CertificateGenerator();
         try {
             generator.generateCertificate(request.get());
         } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
