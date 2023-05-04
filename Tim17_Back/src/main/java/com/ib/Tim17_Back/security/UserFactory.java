@@ -21,7 +21,8 @@ public class UserFactory {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getPassword(),
-                authorities
+                authorities,
+                user.getLastLogin()
         );
     }
 
