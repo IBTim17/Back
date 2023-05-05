@@ -65,6 +65,7 @@ public class UserService implements IUserService {
         System.out.println("jeeej");
 
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
+        if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
         TokenDTO token = new TokenDTO();
         String tokenValue = this.jwtTokenUtil.generateToken(userDetails);
         token.setToken(tokenValue);
