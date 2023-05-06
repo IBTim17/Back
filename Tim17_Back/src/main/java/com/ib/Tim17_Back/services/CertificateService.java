@@ -8,7 +8,13 @@ import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.hibernate.Hibernate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,5 +67,24 @@ public class CertificateService implements ICertificateService {
                 return false;
             }
         return true;
+    }
+
+    @Override
+    public X509Certificate convertMultipartFileToCert(MultipartFile file){
+        InputStream inputStream = null;
+        try {
+            inputStream = file.getInputStream();
+        } catch (IOException e) {
+            throw new CustomException("File could not be read");
+        }
+        CertificateFactory certificateFactory = null;
+        try {
+            certificateFactory = CertificateFactory.getInstance("X.509");
+            X509Certificate x509Cert = (X509Certificate) certificateFactory.generateCertificate(inputStream);
+            return x509Cert;
+        } catch (CertificateException e) {
+            throw new CustomException("Certificate had been modified");
+        }
+
     }
 }
