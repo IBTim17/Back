@@ -1,9 +1,8 @@
 package com.ib.Tim17_Back.services.interfaces;
 
-import com.ib.Tim17_Back.dtos.CreateUserDTO;
-import com.ib.Tim17_Back.dtos.ResetPasswordDTO;
-import com.ib.Tim17_Back.dtos.TokenDTO;
-import com.ib.Tim17_Back.dtos.UserDTO;
+import com.ib.Tim17_Back.dtos.*;
+import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
+import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.mail.MessagingException;
@@ -19,5 +18,7 @@ public interface IUserService{
     UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException;
 
     void sendPasswordResetCode(ResetPasswordDTO body) throws NoSuchAlgorithmException, MessagingException, IOException;
+
+    void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException;
 
 }

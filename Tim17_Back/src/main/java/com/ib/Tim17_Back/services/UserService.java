@@ -1,11 +1,9 @@
 package com.ib.Tim17_Back.services;
 
-import com.ib.Tim17_Back.dtos.CreateUserDTO;
-import com.ib.Tim17_Back.dtos.ResetPasswordDTO;
-import com.ib.Tim17_Back.dtos.TokenDTO;
-import com.ib.Tim17_Back.dtos.UserDTO;
+import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.UserRole;
 import com.ib.Tim17_Back.exceptions.CustomException;
+import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
 import com.ib.Tim17_Back.exceptions.InvalidCredentials;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.ResetCode;
@@ -107,6 +105,19 @@ public class UserService implements IUserService {
         userRepository.save(user);
 
         return new UserDTO(user);
+    }
+
+    public void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException {
+        Optional<User> userDB = userRepository.findByEmail(passwordResetRequest.getEmail());
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+
+        User user = userDB.get();
+        if (user.getPasswordResetCode().getCode().equals(passwordResetRequest.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
+            user.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
+            userRepository.save(user);
+        } else {
+            throw new IncorrectCodeException();
+        }
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {

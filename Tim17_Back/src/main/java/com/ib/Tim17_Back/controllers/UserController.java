@@ -56,4 +56,10 @@ public class UserController {
         userService.sendPasswordResetCode(dto);
         return new ResponseEntity<>("Reset code has been sent!",HttpStatus.OK);
     }
+
+    @PutMapping(value = "/resetPassword")
+    public ResponseEntity<String> resetPassword(@RequestBody PasswordResetRequestDTO passwordResetRequest) throws Exception {
+        userService.resetPassword(passwordResetRequest);
+        return new ResponseEntity<>("Password successfully changed!",HttpStatus.OK);
+    }
 }
