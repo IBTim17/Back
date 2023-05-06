@@ -54,6 +54,6 @@ public class UserController {
     @PostMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws IOException {
         userService.sendPasswordResetCode(dto);
-        return new ResponseEntity<>("Reset code has been sent!",HttpStatus.NO_CONTENT);
+        return new ResponseEntity<>("Reset code has been sent!",HttpStatus.OK);
     }
 }

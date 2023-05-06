@@ -17,6 +17,9 @@ import com.ib.Tim17_Back.security.UserFactory;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.IUserService;
 import com.sendgrid.*;
+import com.twilio.Twilio;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,6 +51,10 @@ public class UserService implements IUserService {
     private String SENDGRID_API_KEY;
     @Value("${SENDER_EMAIL}")
     private String SENDER_EMAIL;
+    @Value("${TWILIO_ACCOUNT_SID}")
+    private String TWILIO_ACCOUNT_SID;
+    @Value("${TWILIO_AUTH_TOKEN}")
+    private String TWILIO_AUTH_TOKEN;
 
     public UserService(UserRepository userRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
@@ -112,7 +119,29 @@ public class UserService implements IUserService {
     }
 
     private void sendByPhone(String phone) {
-        //TODO
+        Optional<User> userDB = userRepository.findByPhoneNumber(phone);
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+
+        Random random = new Random();
+        String code = String.format("%04d", random.nextInt(10000));
+
+        user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
+        userRepository.save(user);
+
+        Twilio.init(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+        String text = "Dear [[name]],\n"
+                + "Below you can find your code for changing your password:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        text = text.replace("[[name]]", user.getFirstName());
+        text = text.replace("[[CODE]]", user.getPasswordResetCode().getCode());
+
+        Message.creator(new PhoneNumber(phone),
+                new PhoneNumber("+13184966544"), text).create();
     }
     private void sendByEmail(String email) throws UserNotFoundException, IOException {
         Optional<User> userDB = userRepository.findByEmail(email);
@@ -154,7 +183,6 @@ public class UserService implements IUserService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
             Response response = sg.api(request);
-//            logger.info(response.getBody());
             return response.getBody();
         } catch (IOException ex) {
             throw ex;
