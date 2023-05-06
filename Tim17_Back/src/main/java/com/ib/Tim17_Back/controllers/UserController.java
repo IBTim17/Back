@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.mail.MessagingException;
 import javax.validation.Valid;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
@@ -50,8 +51,8 @@ public class UserController {
         return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
     }
 
-    @GetMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws MessagingException, UnsupportedEncodingException {
+    @PostMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws IOException {
         userService.sendPasswordResetCode(dto);
         return new ResponseEntity<>("Reset code has been sent!",HttpStatus.NO_CONTENT);
     }

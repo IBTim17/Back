@@ -16,23 +16,17 @@ import com.ib.Tim17_Back.security.SecurityUser;
 import com.ib.Tim17_Back.security.UserFactory;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.IUserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import com.sendgrid.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -50,7 +44,10 @@ public class UserService implements IUserService {
     private final SaltGenerator saltGenerator;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
-    private JavaMailSender mailSender;
+    @Value("${SENDGRID_API_KEY}")
+    private String SENDGRID_API_KEY;
+    @Value("${SENDER_EMAIL}")
+    private String SENDER_EMAIL;
 
     public UserService(UserRepository userRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
@@ -105,10 +102,11 @@ public class UserService implements IUserService {
         return new UserDTO(user);
     }
 
-    public void sendPasswordResetCode(ResetPasswordDTO body)  throws UserNotFoundException, MessagingException, UnsupportedEncodingException {
-        if (isEmailValid(body.getResource())) {
+    public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
+        System.out.println(body.getResource());
+        if (isEmail(body.getResource())) {
             sendByEmail(body.getResource());
-        } else if (isPhoneNumberValid(body.getResource())) {
+        } else if (isPhoneNumber(body.getResource())) {
             sendByPhone(body.getResource());
         } else throw new InvalidCredentials();
     }
@@ -116,46 +114,51 @@ public class UserService implements IUserService {
     private void sendByPhone(String phone) {
         //TODO
     }
-    private void sendByEmail(String email)  throws UserNotFoundException, MessagingException, UnsupportedEncodingException {
-        SecurityUser user = findByUsername(email);
-        if (user == null)
+    private void sendByEmail(String email) throws UserNotFoundException, IOException {
+        Optional<User> userDB = userRepository.findByEmail(email);
+        if (userDB.isEmpty())
         {
             throw new UserNotFoundException();
         } else {
             Random random = new Random();
             String code = String.format("%04d", random.nextInt(10000));
-            User newUser = new User();
-            newUser.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
-            userRepository.save(newUser);
+            User user = userDB.get();
+            user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
+            userRepository.save(user);
 
-            sendPasswordResetEmail(newUser);
+            sendPasswordResetEmail(user);
         }
     }
 
-    private void sendPasswordResetEmail(User user) throws MessagingException, UnsupportedEncodingException {
-        String toAddress = user.getEmail();
-        String fromAddress = ""; //TODO add email
-        String senderName = "Certificate App";
-        String subject = "Password Reset Code";
-        String content = "Dear [[name]],<br>"
-                + "Below you can find your code for changing your password:<br>"
-                + "[[CODE]]<br>"
-                + "Have a nice day!,<br>"
+    private String sendPasswordResetEmail(User user) throws IOException {
+        String emailBody = "Dear [[name]],\n"
+                + "Below you can find your code for changing your password:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
                 + "Certificate App.";
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message);
+        emailBody = emailBody.replace("[[name]]", user.getFirstName());
+        emailBody = emailBody.replace("[[CODE]]", user.getPasswordResetCode().getCode());
 
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setSubject(subject);
+        Email from = new Email(SENDER_EMAIL);
+        String subject = "Password Reset Code";
+        Email to = new Email(user.getEmail());
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(from, subject, to, content);
 
-        content = content.replace("[[name]]", user.getFirstName());
-        content = content.replace("[[CODE]]", user.getPasswordResetCode().getCode());
+        SendGrid sg = new SendGrid(SENDGRID_API_KEY);
 
-        helper.setText(content, true);
-
-        mailSender.send(message);
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+//            logger.info(response.getBody());
+            return response.getBody();
+        } catch (IOException ex) {
+            throw ex;
+        }
     }
 
     private String encodePassword(String password) {
@@ -172,8 +175,6 @@ public class UserService implements IUserService {
         String passwordDigest = user.get().getPassword();
         return passwordEncoder.matches(password, passwordDigest);
     }
-
-
 
     private void validateRegistration(CreateUserDTO createUserDTO) {
         if(!this.isPhoneNumberValid(createUserDTO.getPhoneNumber())) throw new CustomException("Invalid phone number!");
@@ -199,6 +200,20 @@ public class UserService implements IUserService {
 
     private boolean isPhoneNumberValid(String phoneNumber) {
         if(this.userRepository.findByPhoneNumber(phoneNumber).isPresent()) return false;
+        String phonePattern = "^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$";
+        Pattern pattern = Pattern.compile(phonePattern);
+        Matcher matcher = pattern.matcher(phoneNumber);
+        return matcher.matches();
+    }
+
+    private boolean isEmail(String email) {
+        String mailPattern = "^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$";
+        Pattern pattern = Pattern.compile(mailPattern);
+        Matcher matcher = pattern.matcher(email);
+        return matcher.matches();
+    }
+
+    private boolean isPhoneNumber(String phoneNumber) {
         String phonePattern = "^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$";
         Pattern pattern = Pattern.compile(phonePattern);
         Matcher matcher = pattern.matcher(phoneNumber);

@@ -7,6 +7,7 @@ import com.ib.Tim17_Back.dtos.UserDTO;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.mail.MessagingException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
@@ -17,6 +18,6 @@ public interface IUserService{
 
     UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException;
 
-    void sendPasswordResetCode(ResetPasswordDTO body) throws NoSuchAlgorithmException, MessagingException, UnsupportedEncodingException;
+    void sendPasswordResetCode(ResetPasswordDTO body) throws NoSuchAlgorithmException, MessagingException, IOException;
 
 }

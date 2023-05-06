@@ -48,6 +48,7 @@ public class WebSecurityConfiguration {
                  http.csrf().disable()
                 .authorizeRequests()
                          .antMatchers("/api/user/login").permitAll()
+                         .antMatchers("/api/user/resetPassword").permitAll()
                          .antMatchers("/api/requests").permitAll()
                          .antMatchers("/api/user/register").permitAll()
                          .antMatchers("/api/**").authenticated()
