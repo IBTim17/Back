@@ -1,19 +1,19 @@
 package com.ib.Tim17_Back.controllers;
 
-import com.ib.Tim17_Back.dtos.CreateUserDTO;
-import com.ib.Tim17_Back.dtos.LoginDTO;
-import com.ib.Tim17_Back.dtos.TokenDTO;
-import com.ib.Tim17_Back.dtos.UserDTO;
+import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.mail.MessagingException;
 import javax.validation.Valid;
+import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
 @Controller
@@ -48,5 +48,11 @@ public class UserController {
                     "Something went wrong!"), HttpStatus.BAD_REQUEST);
         }
         return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws MessagingException, UnsupportedEncodingException {
+        userService.sendPasswordResetCode(dto);
+        return new ResponseEntity<>("Reset code has been sent!",HttpStatus.NO_CONTENT);
     }
 }

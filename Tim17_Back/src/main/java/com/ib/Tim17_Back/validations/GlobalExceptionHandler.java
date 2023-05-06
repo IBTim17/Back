@@ -108,4 +108,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ErrorResponseMessage(ex.getMessage());
     }
 
+    @ExceptionHandler(value
+            = InvalidCredentials.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public @ResponseBody ErrorResponseMessage
+    handleException(InvalidCredentials ex)
+    {
+        return new ErrorResponseMessage(ex.getMessage());
+    }
+
 }
