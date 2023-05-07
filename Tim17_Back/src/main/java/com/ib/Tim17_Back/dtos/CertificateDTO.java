@@ -20,6 +20,7 @@ public class CertificateDTO {
     private String ownerEmail;
     private String ownerName;
     private String ownerLastName;
+    private String serialNumber;
 
     public CertificateDTO(Certificate certificate){
         this.type = certificate.getType().toString();
@@ -27,5 +28,6 @@ public class CertificateDTO {
         this.ownerEmail = certificate.getOwner().getEmail();
         this.ownerName = certificate.getOwner().getFirstName();
         this.ownerLastName = certificate.getOwner().getLastName();
+        this.serialNumber = certificate.getSerialNumber();
     }
 }
