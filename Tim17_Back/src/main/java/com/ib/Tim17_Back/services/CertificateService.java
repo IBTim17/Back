@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +71,7 @@ public class CertificateService implements ICertificateService {
         Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
         if(optionalCertificate.isEmpty()) throw new CertificateNotFoundException();
 
-        String fileName = "certs/" + serialNumber.replace("-", "") + ".crt";
+        String fileName = "certs/" + new BigInteger(serialNumber.replace("-", ""), 16) + ".crt";
 
         return new File(fileName);
     }
