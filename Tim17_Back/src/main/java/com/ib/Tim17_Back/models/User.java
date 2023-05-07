@@ -4,6 +4,7 @@ import com.ib.Tim17_Back.enums.UserRole;
 import lombok.*;
 import org.springframework.lang.Nullable;
 
+import java.sql.Timestamp;
 import java.util.List;
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -39,5 +40,11 @@ public class User {
     private boolean isActivated;
 //    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.EAGER)
 //    private List<Certificate> certificates;
+    @Column
+    private LocalDateTime lastLogin;
+    @OneToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    private ResetCode passwordResetCode;
+//    @Column(name = "last_password_reset_date")
+//    private Timestamp lastPasswordResetDate;
 
 }

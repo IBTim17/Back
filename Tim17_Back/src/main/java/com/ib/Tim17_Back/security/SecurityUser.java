@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 
 public class SecurityUser implements UserDetails {
@@ -17,6 +18,7 @@ public class SecurityUser implements UserDetails {
     private Boolean accountNonLocked = true;
     private Boolean credentialsNonExpired = true;
     private Boolean enabled = true;
+    private LocalDateTime lastLogin;
 
     public SecurityUser() {
         super();
@@ -26,12 +28,14 @@ public class SecurityUser implements UserDetails {
                         String username,
                         String password,
                         String phoneNumber,
-                        Collection<? extends GrantedAuthority> authorities) {
+                        Collection<? extends GrantedAuthority> authorities,
+                        LocalDateTime lastLogin) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.phoneNumber = phoneNumber;
         this.authorities = authorities;
+        this.lastLogin = lastLogin;
     }
 
     public Long getId() {
@@ -132,5 +136,13 @@ public class SecurityUser implements UserDetails {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public LocalDateTime getLastLogin() {
+        return lastLogin;
+    }
+
+    public void setLastLogin(LocalDateTime lastLogin) {
+        this.lastLogin = lastLogin;
     }
 }

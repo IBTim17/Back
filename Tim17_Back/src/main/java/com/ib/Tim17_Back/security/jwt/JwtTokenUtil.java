@@ -129,5 +129,12 @@ public class JwtTokenUtil {
         final String username = getUsername(token);
         return (username.equals(userDetails.getUsername()) && !isExpired(token));
     }
+//
+//
+//    private boolean lastLoginDate(UserDetails user) {
+////        SecurityUser user = userService.findByUsername(username);
+//        if (user.getLastLogin().isBefore(user.getLastLogin().plusDays(2))) return true;
+//        return false;
+//    }
 
 }

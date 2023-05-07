@@ -40,7 +40,7 @@ public class WebSecurityConfiguration {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         corsConfiguration.setAllowedHeaders(List.of("X-Auth-Token", "skip", "refreshToken", "Cache-Control", "Content-Type"));
-        corsConfiguration.setAllowedOrigins(List.of("http://localhost:4200","http://localhost:8080", "http://localhost:5432"));
+        corsConfiguration.setAllowedOrigins(List.of("http://localhost:3000","http://localhost:8080", "http://localhost:5432"));
         corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PUT","OPTIONS","PATCH", "DELETE"));
         corsConfiguration.setAllowCredentials(true);
         corsConfiguration.setExposedHeaders(List.of("X-Auth-Token"));
@@ -48,6 +48,7 @@ public class WebSecurityConfiguration {
                  http.csrf().disable()
                 .authorizeRequests()
                          .antMatchers("/api/user/login").permitAll()
+                         .antMatchers("/api/user/resetPassword").permitAll()
                          .antMatchers("/api/requests").permitAll()
                          .antMatchers("/api/user/register").permitAll()
                          .antMatchers("/api/**").authenticated()
