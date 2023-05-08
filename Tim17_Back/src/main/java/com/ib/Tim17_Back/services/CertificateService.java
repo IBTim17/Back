@@ -1,6 +1,7 @@
 package com.ib.Tim17_Back.services;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
+import com.ib.Tim17_Back.exceptions.CertificateNotFoundException;
 import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.models.Certificate;
 import com.ib.Tim17_Back.repositories.CertificateRepository;
@@ -9,6 +10,8 @@ import org.hibernate.Hibernate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,5 +64,15 @@ public class CertificateService implements ICertificateService {
                 return false;
             }
         return true;
+    }
+
+    @Override
+    public File getFileBySerialNumber(String serialNumber) {
+        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
+        if(optionalCertificate.isEmpty()) throw new CertificateNotFoundException();
+
+        String fileName = "certs/" + new BigInteger(serialNumber.replace("-", ""), 16) + ".crt";
+
+        return new File(fileName);
     }
 }
