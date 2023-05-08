@@ -2,6 +2,7 @@ package com.ib.Tim17_Back.controllers;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
 import com.ib.Tim17_Back.models.Certificate;
+import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -63,5 +64,13 @@ public class CertificateController {
                 .contentLength(file.length())
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(new InputStreamResource(inputStream));
+    }
+
+    @PutMapping("/revoke/{serialNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    public ResponseEntity<?> revoke(@PathVariable String serialNumber)
+    {
+        this.certificateService.revoke(serialNumber);
+        return new ResponseEntity<>(new ErrorResponseMessage("Certificate is revoked successfully!"), HttpStatus.OK);
     }
 }

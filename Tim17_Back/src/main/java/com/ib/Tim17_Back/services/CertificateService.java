@@ -75,4 +75,19 @@ public class CertificateService implements ICertificateService {
 
         return new File(fileName);
     }
+
+    @Override
+    public void revoke(String serialNumber) {
+        Certificate certificate = null;
+        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
+        if(optionalCertificate.isPresent()) certificate = optionalCertificate.get();
+        else throw new CustomException("Certificate not found");
+        Hibernate.initialize(certificate);
+        List<Certificate> children = certificateRepository.findAllByIssuerIs(serialNumber);
+        for (Certificate crt: children) {
+            crt.setValid(false);
+            certificateRepository.save(certificate);
+            revoke(crt.getSerialNumber());
+        }
+    }
 }
