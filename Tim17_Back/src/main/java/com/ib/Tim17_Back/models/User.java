@@ -14,19 +14,23 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
 @Table(name = "Users")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
     @Column
+    @EqualsAndHashCode.Include
     private String firstName;
     @Column
+    @EqualsAndHashCode.Include
     private String lastName;
     @Column(nullable = false, unique = true)
     private String phoneNumber;
+    @EqualsAndHashCode.Include
     @Column(nullable = false, unique = true)
     private String email;
     @Enumerated(EnumType.STRING)

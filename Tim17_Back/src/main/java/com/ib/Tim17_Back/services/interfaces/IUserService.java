@@ -3,12 +3,14 @@ package com.ib.Tim17_Back.services.interfaces;
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
+import com.ib.Tim17_Back.models.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.mail.MessagingException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 public interface IUserService{
     UserDetails findByUsername(String email);
@@ -21,4 +23,5 @@ public interface IUserService{
 
     void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException;
 
+    Optional<User> findById(Long userId);
 }

@@ -1,13 +1,16 @@
 package com.ib.Tim17_Back.services;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
+import com.ib.Tim17_Back.enums.UserRole;
 import com.ib.Tim17_Back.exceptions.CertificateNotFoundException;
 import com.ib.Tim17_Back.exceptions.CustomException;
+import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.Certificate;
+import com.ib.Tim17_Back.models.User;
 import com.ib.Tim17_Back.repositories.CertificateRepository;
+import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.hibernate.Hibernate;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -21,9 +24,14 @@ import java.util.Optional;
 public class CertificateService implements ICertificateService {
 
     private final CertificateRepository certificateRepository;
+    private final JwtTokenUtil jwtTokenUtil;
 
-    public CertificateService(CertificateRepository certificateRepository) {
+    private final UserService userService;
+
+    public CertificateService(CertificateRepository certificateRepository, JwtTokenUtil tokenUtil, UserService userService) {
         this.certificateRepository = certificateRepository;
+        this.jwtTokenUtil = tokenUtil;
+        this.userService = userService;
     }
 
     @Override
@@ -67,13 +75,28 @@ public class CertificateService implements ICertificateService {
     }
 
     @Override
-    public File getFileBySerialNumber(String serialNumber) {
+    public List<File> getFileBySerialNumber(String serialNumber, String token) {
         Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
         if(optionalCertificate.isEmpty()) throw new CertificateNotFoundException();
 
-        String fileName = "certs/" + new BigInteger(serialNumber.replace("-", ""), 16) + ".crt";
+        Certificate crt = optionalCertificate.get();
 
-        return new File(fileName);
+        Long userId = jwtTokenUtil.getId(token);
+        Optional<User> userDB = userService.findById(userId);
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+
+        List<File> files = new ArrayList<>();
+        String fileName = "certs/" + new BigInteger(serialNumber.replace("-", ""), 16) + ".crt";
+        File file = new File(fileName);
+        files.add(file);
+        if (crt.getOwner().equals(user) || user.getRole() == UserRole.ADMIN){
+            // if owner or admin is downloading -> get public and private part of certificate
+            String keyName = "keys/" + new BigInteger(serialNumber.replace("-", ""), 16) + ".key";
+            file = new File(keyName);
+            files.add(file);
+        }
+        return files;
     }
 
     @Override

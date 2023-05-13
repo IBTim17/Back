@@ -14,7 +14,7 @@ public interface ICertificateService {
 
     boolean isValid(String id);
 
-    File getFileBySerialNumber(String serialNumber);
+    List<File> getFileBySerialNumber(String serialNumber, String token);
 
     void revoke(String serialNumber);
 }
