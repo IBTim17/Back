@@ -35,6 +35,8 @@ public class Certificate {
     private boolean isValid;
     @Column
     private String organization;
+    @Column
+    private String revokingReason;
 
     public Certificate(User owner, Certificate issuer, String serialNumber, CertificateType type, LocalDateTime startDate, LocalDateTime endDate, boolean isValid, String organization) {
         this.owner = owner;

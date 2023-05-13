@@ -1,6 +1,7 @@
 package com.ib.Tim17_Back.controllers;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
+import com.ib.Tim17_Back.dtos.RevokeRequestDTO;
 import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.springframework.core.io.InputStreamResource;
@@ -89,9 +90,9 @@ public class CertificateController {
 
     @PutMapping("/revoke/{serialNumber}")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<?> revoke(@PathVariable String serialNumber)
+    public ResponseEntity<?> revoke(@PathVariable String serialNumber, @RequestHeader("x-auth-token") String token, @RequestBody RevokeRequestDTO reason)
     {
-        this.certificateService.revoke(serialNumber);
+        this.certificateService.revoke(serialNumber, token, reason);
         return new ResponseEntity<>(new ErrorResponseMessage("Certificate is revoked successfully!"), HttpStatus.OK);
     }
 }
