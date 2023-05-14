@@ -3,6 +3,7 @@ package com.ib.Tim17_Back.services;
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
+import com.ib.Tim17_Back.enums.UserRole;
 import com.ib.Tim17_Back.exceptions.*;
 import com.ib.Tim17_Back.models.Certificate;
 import com.ib.Tim17_Back.exceptions.CustomException;
@@ -56,8 +57,12 @@ public class CertificateRequestService implements ICertificateRequestService {
         List<CSRUserDTO> found = new ArrayList<>();
         if (!userRequests.isEmpty()){
             for (CertificateRequest request : userRequests){
-                if (request.getOwner().getEmail().equals(user.getEmail())){
+                if (user.getRole()==UserRole.ADMIN){
                     found.add(new CSRUserDTO(request));
+                }else {
+                    if (request.getOwner().getEmail().equals(user.getEmail())){
+                        found.add(new CSRUserDTO(request));
+                    }
                 }
             }
         }
