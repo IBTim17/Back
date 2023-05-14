@@ -6,6 +6,7 @@ import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
 import com.ib.Tim17_Back.exceptions.InvalidCredentials;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
+import com.ib.Tim17_Back.models.AuthCode;
 import com.ib.Tim17_Back.models.ResetCode;
 import com.ib.Tim17_Back.models.User;
 import com.ib.Tim17_Back.repositories.UserRepository;
@@ -73,7 +74,7 @@ public class UserService implements IUserService {
     @Override
     public TokenDTO logIn(String email, String password) throws Exception {
 
-        if(!this.verifyPassword(email, password)) throw new CustomException(";fehfehoehf");
+        if(!this.verifyPassword(email, password)) throw new CustomException("Wrong email or password!");
         System.out.println("jeeej");
 
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
@@ -86,6 +87,7 @@ public class UserService implements IUserService {
                 this.authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(email, password));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        verifyByEmail(email);
         return token;
     }
 
@@ -188,6 +190,60 @@ public class UserService implements IUserService {
 
         Email from = new Email(SENDER_EMAIL);
         String subject = "Password Reset Code";
+        Email to = new Email(user.getEmail());
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(SENDGRID_API_KEY);
+
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+            return response.getBody();
+        } catch (IOException ex) {
+            throw ex;
+        }
+    }
+    public void checkLoginCode(LoginCodeDTO body) {
+        Optional<User> userDB = userRepository.findByEmail(body.getEmail());
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+
+        User user = userDB.get();
+        if (!user.getAuthenticationCode().getCode().equals(body.getCode()) || !user.getAuthenticationCode().getExpirationDate().isAfter(LocalDateTime.now())) {
+            throw new IncorrectCodeException();
+        }
+    }
+    private void verifyByEmail(String email) throws UserNotFoundException, IOException {
+        Optional<User> userDB = userRepository.findByEmail(email);
+        if (userDB.isEmpty())
+        {
+            throw new UserNotFoundException();
+        } else {
+            Random random = new Random();
+            String code = String.format("%04d", random.nextInt(10000));
+            User user = userDB.get();
+            user.setAuthenticationCode(new AuthCode(code, LocalDateTime.now().plusMinutes(15)));
+            userRepository.save(user);
+
+            sendTwoFactorAuthEmail(user);
+        }
+    }
+
+    private String sendTwoFactorAuthEmail(User user) throws IOException {
+        String emailBody = "Dear [[name]],\n"
+                + "Below you can find your code for verifying your login:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        emailBody = emailBody.replace("[[name]]", user.getFirstName());
+        emailBody = emailBody.replace("[[CODE]]", user.getAuthenticationCode().getCode());
+
+        Email from = new Email(SENDER_EMAIL);
+        String subject = "Verify Login";
         Email to = new Email(user.getEmail());
         Content content = new Content("text/plain", emailBody);
         Mail mail = new Mail(from, subject, to, content);

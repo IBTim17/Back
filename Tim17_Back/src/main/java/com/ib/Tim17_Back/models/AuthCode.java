@@ -1,6 +1,5 @@
 package com.ib.Tim17_Back.models;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,12 +9,11 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
-public class ResetCode {
-
+public class AuthCode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,9 +24,8 @@ public class ResetCode {
     @Column
     LocalDateTime expirationDate;
 
-    public ResetCode(String code, LocalDateTime expirationDate) {
+    public AuthCode(String code, LocalDateTime plusMinutes) {
         this.code = code;
-        this.expirationDate = expirationDate;
+        this.expirationDate = plusMinutes;
     }
-
 }

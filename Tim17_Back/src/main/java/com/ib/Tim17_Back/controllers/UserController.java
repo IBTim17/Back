@@ -39,6 +39,12 @@ public class UserController {
         }
     }
 
+    @PutMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> checkLoginCode(@Valid @RequestBody LoginCodeDTO dto) {
+        userService.checkLoginCode(dto);
+        return new ResponseEntity<>("Login code is valid!", HttpStatus.OK);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<UserDTO> register(@Valid @RequestBody CreateUserDTO createUserDTO) {
         UserDTO registeredUserDTO = null;

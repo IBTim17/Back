@@ -48,6 +48,9 @@ public class User {
     private LocalDateTime lastLogin;
     @OneToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
     private ResetCode passwordResetCode;
+
+    @OneToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    private AuthCode authenticationCode;
 //    @Column(name = "last_password_reset_date")
 //    private Timestamp lastPasswordResetDate;
 
