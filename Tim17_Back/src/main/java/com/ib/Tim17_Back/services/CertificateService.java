@@ -1,9 +1,12 @@
 package com.ib.Tim17_Back.services;
 
 import com.ib.Tim17_Back.dtos.CertificateDTO;
+import com.ib.Tim17_Back.dtos.RevokeRequestDTO;
+import com.ib.Tim17_Back.enums.CertificateType;
 import com.ib.Tim17_Back.enums.UserRole;
 import com.ib.Tim17_Back.exceptions.CertificateNotFoundException;
 import com.ib.Tim17_Back.exceptions.CustomException;
+import com.ib.Tim17_Back.exceptions.ForbiddenActionException;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.Certificate;
 import com.ib.Tim17_Back.models.User;
@@ -100,17 +103,38 @@ public class CertificateService implements ICertificateService {
     }
 
     @Override
-    public void revoke(String serialNumber) {
+    public void revoke(String serialNumber, String token, RevokeRequestDTO reason) {
+        Long userId = jwtTokenUtil.getId(token);
+        User user = userService.findById(userId).get();
+
+        Certificate certificate;
+        Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
+        if(optionalCertificate.isEmpty()) throw new CertificateNotFoundException();
+
+        certificate = optionalCertificate.get();
+        if(certificate.getRevokingReason() != null) throw new CustomException("Certificate has already been revoked!");
+
+        if (user.getRole() == UserRole.ADMIN || (certificate.getOwner() == user && certificate.getType() != CertificateType.ROOT))
+            revoke(serialNumber, reason.getReason());
+        else
+            throw new ForbiddenActionException();
+
+    }
+
+    private void revoke(String serialNumber, String reason) {
         Certificate certificate = null;
         Optional<Certificate> optionalCertificate = certificateRepository.findBySerialNumber(serialNumber);
         if(optionalCertificate.isPresent()) certificate = optionalCertificate.get();
-        else throw new CustomException("Certificate not found");
+        else throw new CertificateNotFoundException();
         Hibernate.initialize(certificate);
-        List<Certificate> children = certificateRepository.findAllByIssuerIs(serialNumber);
+
+        certificate.setValid(false);
+        certificate.setRevokingReason(reason);
+        certificateRepository.save(certificate);
+
+        List<Certificate> children = certificateRepository.findAllByIssuer_SerialNumber(serialNumber);
         for (Certificate crt: children) {
-            crt.setValid(false);
-            certificateRepository.save(certificate);
-            revoke(crt.getSerialNumber());
+            revoke(crt.getSerialNumber(), "Parent certificate is revoked.");
         }
     }
 }

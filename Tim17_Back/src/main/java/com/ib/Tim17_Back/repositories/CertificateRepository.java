@@ -12,6 +12,6 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long>{
 
     Optional<Certificate> findBySerialNumber(String serialNumber);
 
-    List<Certificate> findAllByIssuerIs(String serialNumber);
+    List<Certificate> findAllByIssuer_SerialNumber(String serialNumber);
 
 }

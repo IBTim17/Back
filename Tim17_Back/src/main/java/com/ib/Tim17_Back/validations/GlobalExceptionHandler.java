@@ -117,4 +117,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ErrorResponseMessage(ex.getMessage());
     }
 
+    @ExceptionHandler(value
+            = ForbiddenActionException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public @ResponseBody ErrorResponseMessage
+    handleException(ForbiddenActionException ex)
+    {
+        return new ErrorResponseMessage(ex.getMessage());
+    }
+
 }
