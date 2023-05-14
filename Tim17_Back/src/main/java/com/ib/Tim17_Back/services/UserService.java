@@ -121,6 +121,11 @@ public class UserService implements IUserService {
         }
     }
 
+    @Override
+    public Optional<User> findById(Long userId) {
+        return userRepository.findById(userId);
+    }
+
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
         System.out.println(body.getResource());
         if (isEmail(body.getResource())) {
