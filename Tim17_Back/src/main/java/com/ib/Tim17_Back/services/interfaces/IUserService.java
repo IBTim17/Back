@@ -14,8 +14,7 @@ import java.util.Optional;
 
 public interface IUserService{
     UserDetails findByUsername(String email);
-
-    TokenDTO logIn(String email, String password) throws Exception;
+    TokenDTO logIn(String email, String password, String resource) throws Exception;
 
     UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException;
 

@@ -72,13 +72,14 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public TokenDTO logIn(String email, String password) throws Exception {
+    public TokenDTO logIn(String email, String password, String resource) throws Exception {
 
         if(!this.verifyPassword(email, password)) throw new CustomException("Wrong email or password!");
         System.out.println("jeeej");
 
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
-        if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
+        User user = this.userRepository.findByEmail(email).get();
+        if(!user.isActivated())  throw new CustomException("Not verified!");
         TokenDTO token = new TokenDTO();
         String tokenValue = this.jwtTokenUtil.generateToken(userDetails);
         token.setToken(tokenValue);
@@ -87,7 +88,11 @@ public class UserService implements IUserService {
                 this.authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(email, password));
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        verifyByEmail(email);
+        if (resource.equals("EMAIL"))
+            verifyByEmail(email);
+        else
+            verifyByPhone(user.getPhoneNumber());
+
         return token;
     }
 
@@ -262,6 +267,31 @@ public class UserService implements IUserService {
         }
     }
 
+    private void verifyByPhone(String phoneNumber) {
+        Optional<User> userDB = userRepository.findByPhoneNumber(phoneNumber);
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+
+        Random random = new Random();
+        String code = String.format("%04d", random.nextInt(10000));
+
+        user.setAuthenticationCode(new AuthCode(code, LocalDateTime.now().plusMinutes(15)));
+        userRepository.save(user);
+
+        Twilio.init(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+        String text = "Dear [[name]],\n"
+                + "Please verify your login with this code:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        text = text.replace("[[name]]", user.getFirstName());
+        text = text.replace("[[CODE]]", user.getAuthenticationCode().getCode());
+
+        Message.creator(new PhoneNumber(phoneNumber),
+                new PhoneNumber("+13184966544"), text).create();
+    }
     private String encodePassword(String password) {
         String salt = saltGenerator.generateSalt();
         String saltedPassword = salt + password;

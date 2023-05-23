@@ -11,10 +11,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import javax.mail.MessagingException;
 import javax.validation.Valid;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
 @Controller
@@ -31,7 +29,7 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<TokenDTO> logIn(@Valid @RequestBody LoginDTO login) {
         try {
-            TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword());
+            TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword(), login.getResource());
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity(new ErrorResponseMessage(
