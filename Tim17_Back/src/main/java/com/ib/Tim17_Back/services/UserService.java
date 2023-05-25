@@ -6,8 +6,10 @@ import com.ib.Tim17_Back.exceptions.CustomException;
 import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
 import com.ib.Tim17_Back.exceptions.InvalidCredentials;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
+import com.ib.Tim17_Back.models.PasswordUser;
 import com.ib.Tim17_Back.models.ResetCode;
 import com.ib.Tim17_Back.models.User;
+import com.ib.Tim17_Back.repositories.PasswordRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.security.SaltGenerator;
 import com.ib.Tim17_Back.security.SecurityUser;
@@ -29,10 +31,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Random;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +43,7 @@ import java.util.regex.Pattern;
 public class UserService implements IUserService {
 
     private final UserRepository userRepository;
+    private final PasswordRepository passwordRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final SaltGenerator saltGenerator;
     private final JwtTokenUtil jwtTokenUtil;
@@ -54,8 +57,9 @@ public class UserService implements IUserService {
     @Value("${TWILIO_AUTH_TOKEN}")
     private String TWILIO_AUTH_TOKEN;
 
-    public UserService(UserRepository userRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
+    public UserService(UserRepository userRepository, PasswordRepository passwordRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
+        this.passwordRepository = passwordRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
         this.saltGenerator = saltGenerator;
         this.jwtTokenUtil = jwtTokenUtil;
@@ -75,7 +79,7 @@ public class UserService implements IUserService {
 
         if(!this.verifyPassword(email, password)) throw new CustomException(";fehfehoehf");
         System.out.println("jeeej");
-
+        if(this.checkPasswordRenewal(email)) throw new CustomException("Password needs renewal!");
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
         TokenDTO token = new TokenDTO();
@@ -99,10 +103,14 @@ public class UserService implements IUserService {
         user.setLastName(createUserDTO.getLastName());
         user.setEmail(createUserDTO.getEmail());
         user.setActivated(false);
-        user.setPasswordLastChanged(LocalDateTime.now());
         user.setRole(UserRole.USER);
         user.setPhoneNumber(createUserDTO.getPhoneNumber());
         user.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
+        PasswordUser passwordUser = new PasswordUser();
+        passwordUser.setUser(user);
+        passwordUser.setDate(new Date());
+        passwordUser.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
+        passwordRepository.save(passwordUser);
         userRepository.save(user);
 
         return new UserDTO(user);
@@ -111,11 +119,23 @@ public class UserService implements IUserService {
     public void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException {
         Optional<User> userDB = userRepository.findByEmail(passwordResetRequest.getEmail());
         if (userDB.isEmpty()) throw new UserNotFoundException();
-
         User user = userDB.get();
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUser(user);
+        passwords.sort(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .thenComparing(Comparator.comparing(PasswordUser::getId, Comparator.nullsLast(Comparator.reverseOrder()))));
+
+        for(int i = 0; i < Math.min(5, passwords.size()); i++){
+            if(passwordEncoder.matches(passwordResetRequest.getNewPassword(), (passwords.get(i).getPassword()))) throw new CustomException("Password already used in previous dates!");
+        }
         if (user.getPasswordResetCode().getCode().equals(passwordResetRequest.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
             user.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
             userRepository.save(user);
+            PasswordUser passwordUser = new PasswordUser();
+            passwordUser.setUser(user);
+            passwordUser.setDate(new Date());
+            passwordUser.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
+            passwordRepository.save(passwordUser);
         } else {
             throw new IncorrectCodeException();
         }
@@ -124,6 +144,18 @@ public class UserService implements IUserService {
     @Override
     public Optional<User> findById(Long userId) {
         return userRepository.findById(userId);
+    }
+
+    @Override
+    public boolean checkPasswordRenewal(String email) {
+        User user = this.userRepository.findByEmail(email).get();
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUser(user);
+        passwords.sort(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .thenComparing(Comparator.comparing(PasswordUser::getId, Comparator.nullsLast(Comparator.reverseOrder()))));
+        LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
+        LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return passwordDate.isBefore(ninetyDaysAgo);
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
@@ -187,7 +219,7 @@ public class UserService implements IUserService {
         emailBody = emailBody.replace("[[CODE]]", user.getPasswordResetCode().getCode());
 
         Email from = new Email(SENDER_EMAIL);
-        String subject = "Password Reset Code";
+        String subject = "Password Change Code";
         Email to = new Email(user.getEmail());
         Content content = new Content("text/plain", emailBody);
         Mail mail = new Mail(from, subject, to, content);
@@ -204,12 +236,6 @@ public class UserService implements IUserService {
         } catch (IOException ex) {
             throw ex;
         }
-    }
-
-    private String encodePassword(String password) {
-        String salt = saltGenerator.generateSalt();
-        String saltedPassword = salt + password;
-        return passwordEncoder.encode(saltedPassword);
     }
 
     private boolean verifyPassword(String username, String password) throws NoSuchAlgorithmException {

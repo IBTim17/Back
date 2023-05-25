@@ -24,4 +24,6 @@ public interface IUserService{
     void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException;
 
     Optional<User> findById(Long userId);
+
+    boolean checkPasswordRenewal(String token);
 }
