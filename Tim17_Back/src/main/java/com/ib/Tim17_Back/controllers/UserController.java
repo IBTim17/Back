@@ -34,8 +34,7 @@ public class UserController {
             TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword());
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity(new ErrorResponseMessage(
-                    "Bad credentials"), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 

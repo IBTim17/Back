@@ -25,6 +25,6 @@ public interface IUserService{
 
     Optional<User> findById(Long userId);
 
-
     void confirmAccount(AccountConfirmationDTO accountConfirmationDTO);
+    boolean checkPasswordRenewal(String token);
 }
