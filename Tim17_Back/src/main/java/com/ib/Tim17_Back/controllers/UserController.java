@@ -51,6 +51,19 @@ public class UserController {
         return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
     }
 
+    @PutMapping("/confirm")
+    public ResponseEntity<String> confirm(@Valid @RequestBody AccountConfirmationDTO accountConfirmationDTO) {
+        System.out.println("uso1");
+        try {
+            System.out.println("uso2");
+            this.userService.confirmAccount(accountConfirmationDTO);
+        } catch (Exception e) {
+            return new ResponseEntity(new ErrorResponseMessage(
+                    "Something went wrong!"), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>("Account confirmed", HttpStatus.OK);
+    }
+
     @PostMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws IOException {
         userService.sendPasswordResetCode(dto);

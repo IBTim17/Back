@@ -92,7 +92,7 @@ public class UserService implements IUserService {
     @Override
     public UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException {
 
-        validateRegistration(createUserDTO);
+    //    validateRegistration(createUserDTO);
 
         User user = new User();
         user.setFirstName(createUserDTO.getFirstName());
@@ -103,8 +103,13 @@ public class UserService implements IUserService {
         user.setRole(UserRole.USER);
         user.setPhoneNumber(createUserDTO.getPhoneNumber());
         user.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
-        userRepository.save(user);
+        user = userRepository.save(user);
 
+        try {
+            this.sendRegistrationEmail(user);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return new UserDTO(user);
     }
 
@@ -124,6 +129,23 @@ public class UserService implements IUserService {
     @Override
     public Optional<User> findById(Long userId) {
         return userRepository.findById(userId);
+    }
+
+
+    @Override
+    public void confirmAccount(AccountConfirmationDTO accountConfirmationDTO) {
+        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
+        Optional<User> userDB = userRepository.findByEmail(accountConfirmationDTO.getEmail());
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
+        if (user.getPasswordResetCode().getCode().equals(accountConfirmationDTO.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
+            user.setActivated(true);
+            System.out.println(user.isActivated());
+            userRepository.save(user);
+        } else {
+            throw new IncorrectCodeException();
+        }
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
@@ -206,10 +228,39 @@ public class UserService implements IUserService {
         }
     }
 
-    private String encodePassword(String password) {
-        String salt = saltGenerator.generateSalt();
-        String saltedPassword = salt + password;
-        return passwordEncoder.encode(saltedPassword);
+    private String sendRegistrationEmail(User user) throws IOException {
+        Random random = new Random();
+        String code = String.format("%04d", random.nextInt(10000));
+        user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
+        userRepository.save(user);
+
+        String emailBody = "Dear [[name]],\n"
+                + "Below you can find your code for confirmation of your account:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        emailBody = emailBody.replace("[[name]]", user.getFirstName());
+        emailBody = emailBody.replace("[[CODE]]", user.getPasswordResetCode().getCode());
+
+        Email from = new Email(SENDER_EMAIL);
+        String subject = "CertifyHub account";
+        Email to = new Email(user.getEmail());
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(SENDGRID_API_KEY);
+
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+            return response.getBody();
+        } catch (IOException ex) {
+            throw ex;
+    }
     }
 
     private boolean verifyPassword(String username, String password) throws NoSuchAlgorithmException {
