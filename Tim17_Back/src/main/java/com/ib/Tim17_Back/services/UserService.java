@@ -120,11 +120,7 @@ public class UserService implements IUserService {
         Optional<User> userDB = userRepository.findByEmail(passwordResetRequest.getEmail());
         if (userDB.isEmpty()) throw new UserNotFoundException();
         User user = userDB.get();
-        List<PasswordUser> passwords = this.passwordRepository.findAllByUser(user);
-        passwords.sort(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                .thenComparing(Comparator.comparing(PasswordUser::getId, Comparator.nullsLast(Comparator.reverseOrder()))));
-
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
         for(int i = 0; i < Math.min(5, passwords.size()); i++){
             if(passwordEncoder.matches(passwordResetRequest.getNewPassword(), (passwords.get(i).getPassword()))) throw new CustomException("Password already used in previous dates!");
         }
@@ -149,10 +145,7 @@ public class UserService implements IUserService {
     @Override
     public boolean checkPasswordRenewal(String email) {
         User user = this.userRepository.findByEmail(email).get();
-        List<PasswordUser> passwords = this.passwordRepository.findAllByUser(user);
-        passwords.sort(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(Comparator.comparing(PasswordUser::getDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                .thenComparing(Comparator.comparing(PasswordUser::getId, Comparator.nullsLast(Comparator.reverseOrder()))));
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
         LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
         LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return passwordDate.isBefore(ninetyDaysAgo);

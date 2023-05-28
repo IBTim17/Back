@@ -8,5 +8,5 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface PasswordRepository extends JpaRepository<PasswordUser,Long> {
-    List<PasswordUser> findAllByUser(User user);
+    List<PasswordUser> findAllByUserOrderByDateDesc(User user);
 }
