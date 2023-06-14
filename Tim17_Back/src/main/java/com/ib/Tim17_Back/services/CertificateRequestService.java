@@ -1,5 +1,6 @@
 package com.ib.Tim17_Back.services;
 
+import com.ib.Tim17_Back.controllers.CertificateRequestController;
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.CertificateRequestState;
 import com.ib.Tim17_Back.enums.CertificateType;
@@ -14,6 +15,8 @@ import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
 import com.ib.Tim17_Back.validations.UserRequestValidation;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,9 +53,10 @@ public class CertificateRequestService implements ICertificateRequestService {
     @Autowired
     CertificateGenerator generator;
 
-
+    private static final Logger logger = LogManager.getLogger(CertificateRequestController.class);
     @Override
     public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
+        logger.info("User with ID:{} requested requests for new certificate", user.getId());
         List<CertificateRequest> userRequests = requestRepository.findAll();
         List<CSRUserDTO> found = new ArrayList<>();
         if (!userRequests.isEmpty()){
@@ -74,6 +78,7 @@ public class CertificateRequestService implements ICertificateRequestService {
         User owner = userRepository.findById(userRequestValidation.getUserId(headers)).orElse(null);
         Long userId = userRequestValidation.getUserId(headers);
         String userRole = userRequestValidation.getRoleFromToken(headers);
+        logger.info("User with ID:{} requested new certificate", userId);
 
         if (owner == null) throw new UserNotFoundException();
 
@@ -103,6 +108,7 @@ public class CertificateRequestService implements ICertificateRequestService {
                         generator.generateSelfSignedCertificate(request);
                     } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException |
                              NoSuchProviderException | OperatorCreationException e) {
+                        logger.info("User with ID:{} requested new certificate - Failed to create certificate", userId);
                         throw new RuntimeException(e);
                     }
                     return new CSRUserDTO(request);
@@ -118,6 +124,7 @@ public class CertificateRequestService implements ICertificateRequestService {
                     generator.generateCertificate(request);
                 } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
                          NoSuchAlgorithmException | NoSuchProviderException e) {
+                    logger.info("User with ID:{} requested new certificate - Failed to create certificate", userId);
                     throw new RuntimeException(e);
                 }
 //                approveCSR(request.getId(), userId);
@@ -134,6 +141,7 @@ public class CertificateRequestService implements ICertificateRequestService {
                 generator.generateSelfSignedCertificate(request);
             } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException |
                      NoSuchProviderException | OperatorCreationException e) {
+                logger.info("User with ID:{} requested new certificate - Failed to create certificate", userId);
                 throw new RuntimeException(e);
             }
             return new CSRUserDTO(request);
@@ -142,6 +150,7 @@ public class CertificateRequestService implements ICertificateRequestService {
 
     @Override
     public MessageResponseDTO declineCSR(Long csrId, Long userId, RejectionDTO reasonDTO) {
+        logger.info("User with ID:{} started decline certificate request process", userId);
         Optional<CertificateRequest> request = requestRepository.findById(csrId);
         Optional<Certificate> certificate = certificateRepository.findBySerialNumber(request.get().getIssuerSN());
         if (request.isEmpty())
@@ -154,11 +163,13 @@ public class CertificateRequestService implements ICertificateRequestService {
         request.get().setState(CertificateRequestState.DENIED);
         request.get().setRejectReason(reasonDTO.getReason());
         requestRepository.save(request.get());
+        logger.info("User with ID:{} successfully decline certificate", userId);
         return new MessageResponseDTO("Successfully denied certificate.");
     }
 
     @Override
     public MessageResponseDTO approveCSR(Long csrId, Long userId) {
+        logger.info("User with ID:{} started approve certificate process", userId);
         Optional<CertificateRequest> request = requestRepository.findById(csrId);
         if (request.isEmpty())
             throw new CustomException("CSR with this id not found");
@@ -174,10 +185,12 @@ public class CertificateRequestService implements ICertificateRequestService {
             generator.generateCertificate(request.get());
         } catch (CertificateException | KeyStoreException | IOException | OperatorCreationException |
                  NoSuchAlgorithmException | NoSuchProviderException e) {
+            logger.info("User with ID:{} failed to approve certificate", userId);
             throw new RuntimeException(e);
         }
         request.get().setState(CertificateRequestState.ACCEPTED);
         requestRepository.save(request.get());
+        logger.info("User with ID:{} successfully approved certificate", userId);
         return new MessageResponseDTO("Certificate approved");
 
     }
