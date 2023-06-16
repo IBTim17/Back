@@ -1,5 +1,6 @@
 package com.ib.Tim17_Back.services;
 
+import com.ib.Tim17_Back.controllers.UserController;
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.UserRole;
 import com.ib.Tim17_Back.exceptions.*;
@@ -17,7 +18,8 @@ import com.sendgrid.*;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -59,6 +61,7 @@ public class UserService implements IUserService {
     private String TWILIO_AUTH_TOKEN;
     @Value("${RECAPTCHA_KEY}")
     private String RECAPTCHA_KEY;
+    private static final Logger logger = LogManager.getLogger(UserService.class);
 
     public UserService(UserRepository userRepository, PasswordRepository passwordRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
@@ -81,8 +84,7 @@ public class UserService implements IUserService {
     @Override
     public TokenDTO logIn(String email, String password) throws Exception {
 
-        if(!this.verifyPassword(email, password)) throw new CustomException(";fehfehoehf");
-        System.out.println("jeeej");
+        if(!this.verifyPassword(email, password)) throw new CustomException("Wrong credentials!");
         if(this.checkPasswordRenewal(email)) throw new CustomException("Password needs renewal!");
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
@@ -94,6 +96,7 @@ public class UserService implements IUserService {
                 this.authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(email, password));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        logger.info("User with ID: {} successfully logged in", userDetails.getId());
         return token;
     }
 
@@ -130,6 +133,7 @@ public class UserService implements IUserService {
         Optional<User> userDB = userRepository.findByEmail(passwordResetRequest.getEmail());
         if (userDB.isEmpty()) throw new UserNotFoundException();
         User user = userDB.get();
+        logger.info("User with ID:{} started reset password process", user.getId());
         List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
         for(int i = 0; i < Math.min(5, passwords.size()); i++){
             if(passwordEncoder.matches(passwordResetRequest.getNewPassword(), (passwords.get(i).getPassword()))) throw new CustomException("Password already used in previous dates!");
@@ -142,7 +146,9 @@ public class UserService implements IUserService {
             passwordUser.setDate(new Date());
             passwordUser.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
             passwordRepository.save(passwordUser);
+            logger.info("User with ID:{} successfully reset password", user.getId());
         } else {
+            logger.info("User with ID:{} failed to reset password", user.getId());
             throw new IncorrectCodeException();
         }
     }
@@ -155,16 +161,16 @@ public class UserService implements IUserService {
 
     @Override
     public void confirmAccount(AccountConfirmationDTO accountConfirmationDTO) {
-        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
         Optional<User> userDB = userRepository.findByEmail(accountConfirmationDTO.getEmail());
         if (userDB.isEmpty()) throw new UserNotFoundException();
         User user = userDB.get();
-        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
+        logger.info("User with ID:{} started account confirm process", user.getId());
         if (user.getPasswordResetCode().getCode().equals(accountConfirmationDTO.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
             user.setActivated(true);
-            System.out.println(user.isActivated());
+            logger.info("User with ID:{} successfully confirmed account", user.getId());
             userRepository.save(user);
         } else {
+            logger.info("Failed to confirm account for user with ID:{}", user.getId());
             throw new IncorrectCodeException();
         }
     }
@@ -173,6 +179,8 @@ public class UserService implements IUserService {
     public boolean checkPasswordRenewal(String email) {
         User user = this.userRepository.findByEmail(email).get();
         List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
+//        if (passwords.size() == 0)
+//            return false;
         LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
         LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return passwordDate.isBefore(ninetyDaysAgo);
@@ -183,13 +191,14 @@ public class UserService implements IUserService {
         String url = "https://www.google.com/recaptcha/api/siteverify";
         String params = "?secret="+RECAPTCHA_KEY+"&response="+token;
         RecaptchaResponseDTO recaptchaResponse = restTempate.exchange(url+params, HttpMethod.POST, null, RecaptchaResponseDTO.class).getBody();
-        if(recaptchaResponse == null) throw new InvalidRecaptchaException("Something went wrong with recaptcha");
-
+        if(recaptchaResponse == null) {
+            logger.info("Something went wrong with recaptcha verification");
+            throw new InvalidRecaptchaException("Something went wrong with recaptcha");
+        }
         return recaptchaResponse.isSuccess();
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
-        System.out.println(body.getResource());
         if (isEmail(body.getResource())) {
             sendByEmail(body.getResource());
         } else if (isPhoneNumber(body.getResource())) {
@@ -201,7 +210,7 @@ public class UserService implements IUserService {
         Optional<User> userDB = userRepository.findByPhoneNumber(phone);
         if (userDB.isEmpty()) throw new UserNotFoundException();
         User user = userDB.get();
-
+        logger.info("User with ID:{} started reset password process via phone number", user.getId());
         Random random = new Random();
         String code = String.format("%04d", random.nextInt(10000));
 
@@ -221,6 +230,7 @@ public class UserService implements IUserService {
 
         Message.creator(new PhoneNumber(phone),
                 new PhoneNumber("+13184966544"), text).create();
+        logger.info("Successfully sent SMS with reset code to user with ID:{}", user.getId());
     }
     private void sendByEmail(String email) throws UserNotFoundException, IOException {
         Optional<User> userDB = userRepository.findByEmail(email);
@@ -231,10 +241,12 @@ public class UserService implements IUserService {
             Random random = new Random();
             String code = String.format("%04d", random.nextInt(10000));
             User user = userDB.get();
+            logger.info("User with ID:{} started reset password process via email", user.getId());
             user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
             userRepository.save(user);
 
             sendPasswordResetEmail(user);
+            logger.info("Successfully sent email with reset code to user with ID:{}", user.getId());
         }
     }
 
@@ -264,6 +276,7 @@ public class UserService implements IUserService {
             Response response = sg.api(request);
             return response.getBody();
         } catch (IOException ex) {
+            logger.info("Failed to send email to user with ID:{}", user.getId());
             throw ex;
         }
     }
