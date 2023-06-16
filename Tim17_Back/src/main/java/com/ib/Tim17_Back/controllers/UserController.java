@@ -2,19 +2,28 @@ package com.ib.Tim17_Back.controllers;
 
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.models.ErrorResponseMessage;
+import com.ib.Tim17_Back.security.SecurityUser;
 import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import javax.mail.MessagingException;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
 @Controller
@@ -23,10 +32,26 @@ import java.security.NoSuchAlgorithmException;
 public class UserController {
 
     private final UserService userService;
+    private final JwtTokenUtil jwtTokenUtil;
+    @Autowired
+    private ClientRegistrationRepository clientRegistrationRepository;
 
-    public UserController(UserService userService, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
+    @Autowired
+    private OAuth2AuthorizedClientService authorizedClientService;
+
+
+    public UserController(UserService userService, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, JwtTokenUtil jwtTokenUtil1) {
         this.userService = userService;
+        this.jwtTokenUtil = jwtTokenUtil1;
     }
+
+
+
+    @GetMapping("/login/oauth2/code/google")
+    public String handleGoogleOAuthCallback(OAuth2AuthenticationToken authenticationToken) {
+        return "redirect:/home";
+    }
+
 
     @PostMapping("/login")
     public ResponseEntity<TokenDTO> logIn(@Valid @RequestBody LoginDTO login) {
