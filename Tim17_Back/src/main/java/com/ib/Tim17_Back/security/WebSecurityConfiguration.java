@@ -51,6 +51,7 @@ public class WebSecurityConfiguration {
                          .antMatchers("/api/user/resetPassword").permitAll()
                          .antMatchers("/api/requests").permitAll()
                          .antMatchers("/api/user/register").permitAll()
+                         .antMatchers("/api/user/recaptcha/**").permitAll()
                          .antMatchers("/api/**").authenticated()
                 .and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
