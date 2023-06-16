@@ -74,4 +74,8 @@ public class UserController {
         userService.resetPassword(passwordResetRequest);
         return new ResponseEntity<>("Password successfully changed!",HttpStatus.OK);
     }
+    @PostMapping(value = "/recaptcha/{token}")
+    public ResponseEntity<Boolean> recaptcha(@Valid @PathVariable(value = "token", required = true)String token){
+        return new ResponseEntity<>(this.userService.verifyRecaptcha(token), HttpStatus.OK);
+    }
 }

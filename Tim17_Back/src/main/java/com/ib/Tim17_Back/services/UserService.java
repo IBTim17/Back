@@ -2,10 +2,7 @@ package com.ib.Tim17_Back.services;
 
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.UserRole;
-import com.ib.Tim17_Back.exceptions.CustomException;
-import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
-import com.ib.Tim17_Back.exceptions.InvalidCredentials;
-import com.ib.Tim17_Back.exceptions.UserNotFoundException;
+import com.ib.Tim17_Back.exceptions.*;
 import com.ib.Tim17_Back.models.PasswordUser;
 import com.ib.Tim17_Back.models.ResetCode;
 import com.ib.Tim17_Back.models.User;
@@ -20,7 +17,9 @@ import com.sendgrid.*;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -28,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -48,6 +48,7 @@ public class UserService implements IUserService {
     private final SaltGenerator saltGenerator;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
+    private final RestTemplate restTempate;
     @Value("${SENDGRID_API_KEY}")
     private String SENDGRID_API_KEY;
     @Value("${SENDER_EMAIL}")
@@ -56,6 +57,8 @@ public class UserService implements IUserService {
     private String TWILIO_ACCOUNT_SID;
     @Value("${TWILIO_AUTH_TOKEN}")
     private String TWILIO_AUTH_TOKEN;
+    @Value("${RECAPTCHA_KEY}")
+    private String RECAPTCHA_KEY;
 
     public UserService(UserRepository userRepository, PasswordRepository passwordRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
@@ -64,6 +67,7 @@ public class UserService implements IUserService {
         this.saltGenerator = saltGenerator;
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
+        this.restTempate = new RestTemplate();
     }
 
     @Override
@@ -172,6 +176,16 @@ public class UserService implements IUserService {
         LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
         LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return passwordDate.isBefore(ninetyDaysAgo);
+    }
+
+    @Override
+    public Boolean verifyRecaptcha(String token) {
+        String url = "https://www.google.com/recaptcha/api/siteverify";
+        String params = "?secret="+RECAPTCHA_KEY+"&response="+token;
+        RecaptchaResponseDTO recaptchaResponse = restTempate.exchange(url+params, HttpMethod.POST, null, RecaptchaResponseDTO.class).getBody();
+        if(recaptchaResponse == null) throw new InvalidRecaptchaException("Something went wrong with recaptcha");
+
+        return recaptchaResponse.isSuccess();
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
