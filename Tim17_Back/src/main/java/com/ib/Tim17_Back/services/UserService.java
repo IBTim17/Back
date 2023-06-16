@@ -81,7 +81,7 @@ public class UserService implements IUserService {
     @Override
     public TokenDTO logIn(String email, String password) throws Exception {
 
-        if(!this.verifyPassword(email, password)) throw new CustomException(";fehfehoehf");
+        if(!this.verifyPassword(email, password)) throw new CustomException("Wrong credentials!");
         if(this.checkPasswordRenewal(email)) throw new CustomException("Password needs renewal!");
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
@@ -176,8 +176,8 @@ public class UserService implements IUserService {
     public boolean checkPasswordRenewal(String email) {
         User user = this.userRepository.findByEmail(email).get();
         List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
-        if (passwords.size() == 0)
-            return false;
+//        if (passwords.size() == 0)
+//            return false;
         LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
         LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return passwordDate.isBefore(ninetyDaysAgo);
