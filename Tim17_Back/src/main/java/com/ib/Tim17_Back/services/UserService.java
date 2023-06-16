@@ -129,18 +129,28 @@ public class UserService implements IUserService {
 
     public TokenDTO googleToken(String email) {
         Optional<User> found = this.userRepository.findByEmail(email);
-        if (found.isEmpty())
-            return null;
+        if (found.isEmpty()){
+            User user = new User();
+            user.setFirstName(email);
+            user.setLastName(email);
+            user.setEmail(email);
+            user.setActivated(true);
+            user.setPasswordLastChanged(LocalDateTime.now());
+            user.setRole(UserRole.USER);
+            user.setPhoneNumber("12231"+email);
+            user.setPassword(passwordEncoder.encode("createUserDTO.getPassword())"));
+            userRepository.save(user);
+        }
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
         TokenDTO token = new TokenDTO();
         String tokenValue = this.jwtTokenUtil.generateToken(userDetails);
         token.setToken(tokenValue);
         token.setRefreshToken(this.jwtTokenUtil.generateRefreshToken(userDetails));
-        Authentication authentication =
-                this.authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(userDetails.getUsername(), userDetails.getPassword()));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+//        Authentication authentication =
+//                this.authenticationManager.authenticate(
+//                        new UsernamePasswordAuthenticationToken(userDetails.getUsername(), userDetails.getPassword()));
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
         return token;
     }
 

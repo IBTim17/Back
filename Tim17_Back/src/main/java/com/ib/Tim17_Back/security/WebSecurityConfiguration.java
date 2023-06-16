@@ -43,8 +43,7 @@ public class WebSecurityConfiguration {
 
     @Autowired
     private JwtAuthenticationEntryPoint entryPoint;
-    @Autowired
-    private UserService userService;
+
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -70,6 +69,7 @@ public class WebSecurityConfiguration {
                 .antMatchers("/api/user/resetPassword").permitAll()
                 .antMatchers("/api/requests").permitAll()
                 .antMatchers("/api/user/oauth").permitAll()
+                .antMatchers("/api/user/handleOauth/**").permitAll()
                 .antMatchers("/api/user/register").permitAll()
                 .antMatchers("/api/**").authenticated()
                 .and()
@@ -84,18 +84,13 @@ public class WebSecurityConfiguration {
                             DefaultOAuth2User user = (DefaultOAuth2User) authentication.getPrincipal();
                             String email = (String) user.getAttributes().get("email");
                             System.out.println("Email from oauth:" + email);
-                            TokenDTO token = userService.googleToken(email);
-                            String redirectUrl;
-                            if (token == null){
-                                redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/login")
-                                        .toUriString();
-                            }else {
-                                redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/main")
-                                        .queryParam("token",token.getToken())
-                                        .queryParam("refresh_token",token.getRefreshToken())
-                                        .toUriString();
-                            }
+                            //TokenDTO token = userService.googleToken(email);
+                            String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:8080/api/user/handleOauth/" + email)
+                                    .toUriString();
+                            //String redirectUrl = "http://localhost:8080/api/user/handleOauth/" + email;
                             response.sendRedirect(redirectUrl);
+
+                            //response.sendRedirect(redirectUrl);
                         }))
                 .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

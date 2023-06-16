@@ -20,9 +20,12 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import javax.websocket.server.PathParam;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 
@@ -47,9 +50,16 @@ public class UserController {
 
 
 
-    @GetMapping("/login/oauth2/code/google")
-    public String handleGoogleOAuthCallback(OAuth2AuthenticationToken authenticationToken) {
-        return "redirect:/home";
+    @GetMapping("/handleOauth/{email}")
+    public void handleGoogleOAuthCallback(@PathVariable("email") String email, HttpServletResponse response) throws IOException {
+        System.out.println("EMAIL USO:"+ email);
+        TokenDTO token = userService.googleToken(email);
+        String redirectUrl;
+        redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/main")
+                .queryParam("token",token.getToken())
+                .queryParam("refresh_token",token.getRefreshToken())
+                .toUriString();
+        response.sendRedirect(redirectUrl);
     }
 
 
