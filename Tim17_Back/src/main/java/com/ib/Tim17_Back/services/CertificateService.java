@@ -146,6 +146,15 @@ public class CertificateService implements ICertificateService {
 
     public X509Certificate convertMultipartFileToCert(MultipartFile file){
         InputStream inputStream;
+        if(file.getSize() > 1073741824) {
+            throw new CustomException("Upladed file is bigger than 1gb");
+        }
+
+        String fileName = file.getOriginalFilename();
+        String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        if(!fileExtension.equals("crt")) {
+            throw new CustomException("Uploaded file isn't .crt file");
+        }
         try {
             inputStream = file.getInputStream();
         } catch (IOException e) {
