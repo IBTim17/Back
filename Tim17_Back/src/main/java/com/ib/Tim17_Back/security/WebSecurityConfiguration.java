@@ -73,8 +73,8 @@ public class WebSecurityConfiguration {
                 .antMatchers("/api/user/handleOauth/**").permitAll()
                 .antMatchers("/api/user/register").permitAll()
                 .antMatchers("/api/certificate/isvalidcert").permitAll()
-                .antMatchers("/api/**").authenticated()
                 .antMatchers("/api/user/recaptcha/**").permitAll()
+                .antMatchers("/api/**").authenticated()
                          
 
                 .and()

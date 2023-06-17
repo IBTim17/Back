@@ -178,7 +178,7 @@ public class UserService implements IUserService {
             user.setLastName(email);
             user.setEmail(email);
             user.setActivated(true);
-            user.setPasswordLastChanged(LocalDateTime.now());
+            user.setLastLogin(LocalDateTime.now());
             user.setRole(UserRole.USER);
             user.setPhoneNumber("12231"+email);
             user.setPassword(passwordEncoder.encode("createUserDTO.getPassword())"));
