@@ -142,14 +142,16 @@ public class CertificateService implements ICertificateService {
         for (Certificate crt: children) {
             revoke(crt.getSerialNumber(), "Parent certificate is revoked.");
         }
+    }
+
     public X509Certificate convertMultipartFileToCert(MultipartFile file){
-        InputStream inputStream = null;
+        InputStream inputStream;
         try {
             inputStream = file.getInputStream();
         } catch (IOException e) {
             throw new CustomException("File could not be read");
         }
-        CertificateFactory certificateFactory = null;
+        CertificateFactory certificateFactory;
         try {
             certificateFactory = CertificateFactory.getInstance("X.509");
             X509Certificate x509Cert = (X509Certificate) certificateFactory.generateCertificate(inputStream);

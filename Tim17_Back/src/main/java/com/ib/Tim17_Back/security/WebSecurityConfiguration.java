@@ -71,6 +71,7 @@ public class WebSecurityConfiguration {
                 .antMatchers("/api/user/oauth").permitAll()
                 .antMatchers("/api/user/handleOauth/**").permitAll()
                 .antMatchers("/api/user/register").permitAll()
+                .antMatchers("/api/certificate/isvalidcert").permitAll()
                 .antMatchers("/api/**").authenticated()
                 .and()
                 .oauth2Login(oauth2 -> oauth2
