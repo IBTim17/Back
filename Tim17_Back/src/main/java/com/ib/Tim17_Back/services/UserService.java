@@ -3,6 +3,11 @@ package com.ib.Tim17_Back.services;
 import com.ib.Tim17_Back.controllers.UserController;
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.enums.UserRole;
+import com.ib.Tim17_Back.exceptions.CustomException;
+import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
+import com.ib.Tim17_Back.exceptions.InvalidCredentials;
+import com.ib.Tim17_Back.exceptions.UserNotFoundException;
+import com.ib.Tim17_Back.models.AuthCode;
 import com.ib.Tim17_Back.exceptions.*;
 import com.ib.Tim17_Back.models.PasswordUser;
 import com.ib.Tim17_Back.models.ResetCode;
@@ -82,12 +87,13 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public TokenDTO logIn(String email, String password) throws Exception {
+    public TokenDTO logIn(String email, String password, String resource) throws Exception {
 
         if(!this.verifyPassword(email, password)) throw new CustomException("Wrong credentials!");
         if(this.checkPasswordRenewal(email)) throw new CustomException("Password needs renewal!");
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
-        if(!this.userRepository.findByEmail(email).get().isActivated())  throw new CustomException("Not verified!");
+        User user = this.userRepository.findByEmail(email).get();
+        if(!user.isActivated())  throw new CustomException("Not verified!");
         TokenDTO token = new TokenDTO();
         String tokenValue = this.jwtTokenUtil.generateToken(userDetails);
         token.setToken(tokenValue);
@@ -96,6 +102,10 @@ public class UserService implements IUserService {
                 this.authenticationManager.authenticate(
                         new UsernamePasswordAuthenticationToken(email, password));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (resource.equals("EMAIL"))
+            verifyByEmail(email);
+        else
+            verifyByPhone(user.getPhoneNumber());
         logger.info("User with ID: {} successfully logged in", userDetails.getId());
         return token;
     }
@@ -250,7 +260,7 @@ public class UserService implements IUserService {
         }
     }
 
-    private String sendPasswordResetEmail(User user) throws IOException {
+    private void sendPasswordResetEmail(User user) throws IOException {
         String emailBody = "Dear [[name]],\n"
                 + "Below you can find your code for changing your password:\n"
                 + "[[CODE]]\n"
@@ -274,14 +284,38 @@ public class UserService implements IUserService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
             Response response = sg.api(request);
-            return response.getBody();
+            response.getBody();
         } catch (IOException ex) {
             logger.info("Failed to send email to user with ID:{}", user.getId());
             throw ex;
         }
     }
+    public void checkLoginCode(LoginCodeDTO body) {
+        Optional<User> userDB = userRepository.findByEmail(body.getEmail());
+        if (userDB.isEmpty()) throw new UserNotFoundException();
 
-    private String sendRegistrationEmail(User user) throws IOException {
+        User user = userDB.get();
+        if (!user.getAuthenticationCode().getCode().equals(body.getCode()) || !user.getAuthenticationCode().getExpirationDate().isAfter(LocalDateTime.now())) {
+            throw new IncorrectCodeException();
+        }
+    }
+    private void verifyByEmail(String email) throws UserNotFoundException, IOException {
+        Optional<User> userDB = userRepository.findByEmail(email);
+        if (userDB.isEmpty())
+        {
+            throw new UserNotFoundException();
+        } else {
+            Random random = new Random();
+            String code = String.format("%04d", random.nextInt(10000));
+            User user = userDB.get();
+            user.setAuthenticationCode(new AuthCode(code, LocalDateTime.now().plusMinutes(15)));
+            userRepository.save(user);
+
+            sendTwoFactorAuthEmail(user);
+        }
+    }
+
+    private void sendRegistrationEmail(User user) throws IOException {
         Random random = new Random();
         String code = String.format("%04d", random.nextInt(10000));
         user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
@@ -310,12 +344,67 @@ public class UserService implements IUserService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
             Response response = sg.api(request);
-            return response.getBody();
+            response.getBody();
         } catch (IOException ex) {
             throw ex;
-    }
+        }
     }
 
+    private void sendTwoFactorAuthEmail(User user) throws IOException {
+        String emailBody = "Dear [[name]],\n"
+                + "Below you can find your code for verifying your login:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        emailBody = emailBody.replace("[[name]]", user.getFirstName());
+        emailBody = emailBody.replace("[[CODE]]", user.getAuthenticationCode().getCode());
+
+        Email from = new Email(SENDER_EMAIL);
+        String subject = "Verify Login";
+        Email to = new Email(user.getEmail());
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(SENDGRID_API_KEY);
+
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+            response.getBody();
+        } catch (IOException ex) {
+            throw ex;
+        }
+    }
+
+    private void verifyByPhone(String phoneNumber) {
+        Optional<User> userDB = userRepository.findByPhoneNumber(phoneNumber);
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+
+        Random random = new Random();
+        String code = String.format("%04d", random.nextInt(10000));
+
+        user.setAuthenticationCode(new AuthCode(code, LocalDateTime.now().plusMinutes(15)));
+        userRepository.save(user);
+
+        Twilio.init(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+        String text = "Dear [[name]],\n"
+                + "Please verify your login with this code:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        text = text.replace("[[name]]", user.getFirstName());
+        text = text.replace("[[CODE]]", user.getAuthenticationCode().getCode());
+
+        Message.creator(new PhoneNumber(phoneNumber),
+                new PhoneNumber("+13184966544"), text).create();
+    }
 
     private boolean verifyPassword(String username, String password) throws NoSuchAlgorithmException {
         Optional<User> user = userRepository.findByEmail(username);

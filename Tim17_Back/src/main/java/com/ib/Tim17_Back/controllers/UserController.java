@@ -13,10 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.mail.MessagingException;
 import javax.validation.Valid;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 
 @Controller
@@ -34,13 +32,19 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<TokenDTO> logIn(@Valid @RequestBody LoginDTO login) {
         try {
+            TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword(), login.getResource());
             logger.info("Started login process");
-            TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword());
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
             logger.info("Login failed");
             return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
+    }
+
+    @PutMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> checkLoginCode(@Valid @RequestBody LoginCodeDTO dto) {
+        userService.checkLoginCode(dto);
+        return new ResponseEntity<>("Login code is valid!", HttpStatus.OK);
     }
 
     @PostMapping("/register")
