@@ -43,11 +43,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 }catch (IllegalArgumentException e) {
                     System.out.println("Unable to get JWT Token.");
                 } catch (ExpiredJwtException e) {
-                    try {
-                        authenticateToken(request, refreshToken);
-                    }catch (ExpiredJwtException j){
-                        System.out.println("Refresh token has expired.");
-                    }
+//                    try {
+//                        authenticateToken(request, refreshToken);
+//                    }catch (ExpiredJwtException j){
+//                        System.out.println("Refresh token has expired.");
+//                    }
                     System.out.println("JWT Token has expired.");
                 } catch (io.jsonwebtoken.MalformedJwtException e) {
                     System.out.println("Bad JWT Token.");
