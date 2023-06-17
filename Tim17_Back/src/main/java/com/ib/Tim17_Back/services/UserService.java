@@ -7,8 +7,11 @@ import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
 import com.ib.Tim17_Back.exceptions.InvalidCredentials;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.AuthCode;
+import com.ib.Tim17_Back.exceptions.*;
+import com.ib.Tim17_Back.models.PasswordUser;
 import com.ib.Tim17_Back.models.ResetCode;
 import com.ib.Tim17_Back.models.User;
+import com.ib.Tim17_Back.repositories.PasswordRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.security.SaltGenerator;
 import com.ib.Tim17_Back.security.SecurityUser;
@@ -20,6 +23,7 @@ import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -27,13 +31,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Random;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,10 +47,12 @@ import java.util.regex.Pattern;
 public class UserService implements IUserService {
 
     private final UserRepository userRepository;
+    private final PasswordRepository passwordRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final SaltGenerator saltGenerator;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
+    private final RestTemplate restTempate;
     @Value("${SENDGRID_API_KEY}")
     private String SENDGRID_API_KEY;
     @Value("${SENDER_EMAIL}")
@@ -54,13 +61,17 @@ public class UserService implements IUserService {
     private String TWILIO_ACCOUNT_SID;
     @Value("${TWILIO_AUTH_TOKEN}")
     private String TWILIO_AUTH_TOKEN;
+    @Value("${RECAPTCHA_KEY}")
+    private String RECAPTCHA_KEY;
 
-    public UserService(UserRepository userRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
+    public UserService(UserRepository userRepository, PasswordRepository passwordRepository, SaltGenerator saltGenerator, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
+        this.passwordRepository = passwordRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
         this.saltGenerator = saltGenerator;
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
+        this.restTempate = new RestTemplate();
     }
 
     @Override
@@ -76,7 +87,7 @@ public class UserService implements IUserService {
 
         if(!this.verifyPassword(email, password)) throw new CustomException("Wrong email or password!");
         System.out.println("jeeej");
-
+        if(this.checkPasswordRenewal(email)) throw new CustomException("Password needs renewal!");
         SecurityUser userDetails = (SecurityUser) this.findByUsername(email);
         User user = this.userRepository.findByEmail(email).get();
         if(!user.isActivated())  throw new CustomException("Not verified!");
@@ -99,30 +110,48 @@ public class UserService implements IUserService {
     @Override
     public UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException {
 
-        validateRegistration(createUserDTO);
+    //    validateRegistration(createUserDTO);
 
         User user = new User();
         user.setFirstName(createUserDTO.getFirstName());
         user.setLastName(createUserDTO.getLastName());
         user.setEmail(createUserDTO.getEmail());
         user.setActivated(false);
-        user.setPasswordLastChanged(LocalDateTime.now());
         user.setRole(UserRole.USER);
         user.setPhoneNumber(createUserDTO.getPhoneNumber());
         user.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
+        user = userRepository.save(user);
+        PasswordUser passwordUser = new PasswordUser();
+        passwordUser.setUser(user);
+        passwordUser.setDate(new Date());
+        passwordUser.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
+        passwordRepository.save(passwordUser);
         userRepository.save(user);
 
+        try {
+            this.sendRegistrationEmail(user);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return new UserDTO(user);
     }
 
     public void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException {
         Optional<User> userDB = userRepository.findByEmail(passwordResetRequest.getEmail());
         if (userDB.isEmpty()) throw new UserNotFoundException();
-
         User user = userDB.get();
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
+        for(int i = 0; i < Math.min(5, passwords.size()); i++){
+            if(passwordEncoder.matches(passwordResetRequest.getNewPassword(), (passwords.get(i).getPassword()))) throw new CustomException("Password already used in previous dates!");
+        }
         if (user.getPasswordResetCode().getCode().equals(passwordResetRequest.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
             user.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
             userRepository.save(user);
+            PasswordUser passwordUser = new PasswordUser();
+            passwordUser.setUser(user);
+            passwordUser.setDate(new Date());
+            passwordUser.setPassword(passwordEncoder.encode(passwordResetRequest.getNewPassword()));
+            passwordRepository.save(passwordUser);
         } else {
             throw new IncorrectCodeException();
         }
@@ -131,6 +160,42 @@ public class UserService implements IUserService {
     @Override
     public Optional<User> findById(Long userId) {
         return userRepository.findById(userId);
+    }
+
+
+    @Override
+    public void confirmAccount(AccountConfirmationDTO accountConfirmationDTO) {
+        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
+        Optional<User> userDB = userRepository.findByEmail(accountConfirmationDTO.getEmail());
+        if (userDB.isEmpty()) throw new UserNotFoundException();
+        User user = userDB.get();
+        System.out.println(accountConfirmationDTO.getEmail() + "  " + accountConfirmationDTO.getCode());
+        if (user.getPasswordResetCode().getCode().equals(accountConfirmationDTO.getCode()) && user.getPasswordResetCode().getExpirationDate().isAfter(LocalDateTime.now())) {
+            user.setActivated(true);
+            System.out.println(user.isActivated());
+            userRepository.save(user);
+        } else {
+            throw new IncorrectCodeException();
+        }
+    }
+
+    @Override
+    public boolean checkPasswordRenewal(String email) {
+        User user = this.userRepository.findByEmail(email).get();
+        List<PasswordUser> passwords = this.passwordRepository.findAllByUserOrderByDateDesc(user);
+        LocalDate ninetyDaysAgo = LocalDate.now().minusDays(90);
+        LocalDate passwordDate = passwords.get(0).getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return passwordDate.isBefore(ninetyDaysAgo);
+    }
+
+    @Override
+    public Boolean verifyRecaptcha(String token) {
+        String url = "https://www.google.com/recaptcha/api/siteverify";
+        String params = "?secret="+RECAPTCHA_KEY+"&response="+token;
+        RecaptchaResponseDTO recaptchaResponse = restTempate.exchange(url+params, HttpMethod.POST, null, RecaptchaResponseDTO.class).getBody();
+        if(recaptchaResponse == null) throw new InvalidRecaptchaException("Something went wrong with recaptcha");
+
+        return recaptchaResponse.isSuccess();
     }
 
     public void sendPasswordResetCode(ResetPasswordDTO body) throws UserNotFoundException, IOException {
@@ -183,7 +248,7 @@ public class UserService implements IUserService {
         }
     }
 
-    private String sendPasswordResetEmail(User user) throws IOException {
+    private void sendPasswordResetEmail(User user) throws IOException {
         String emailBody = "Dear [[name]],\n"
                 + "Below you can find your code for changing your password:\n"
                 + "[[CODE]]\n"
@@ -194,7 +259,7 @@ public class UserService implements IUserService {
         emailBody = emailBody.replace("[[CODE]]", user.getPasswordResetCode().getCode());
 
         Email from = new Email(SENDER_EMAIL);
-        String subject = "Password Reset Code";
+        String subject = "Password Change Code";
         Email to = new Email(user.getEmail());
         Content content = new Content("text/plain", emailBody);
         Mail mail = new Mail(from, subject, to, content);
@@ -207,7 +272,7 @@ public class UserService implements IUserService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
             Response response = sg.api(request);
-            return response.getBody();
+            response.getBody();
         } catch (IOException ex) {
             throw ex;
         }
@@ -237,7 +302,42 @@ public class UserService implements IUserService {
         }
     }
 
-    private String sendTwoFactorAuthEmail(User user) throws IOException {
+    private void sendRegistrationEmail(User user) throws IOException {
+        Random random = new Random();
+        String code = String.format("%04d", random.nextInt(10000));
+        user.setPasswordResetCode(new ResetCode(code, LocalDateTime.now().plusMinutes(15)));
+        userRepository.save(user);
+
+        String emailBody = "Dear [[name]],\n"
+                + "Below you can find your code for confirmation of your account:\n"
+                + "[[CODE]]\n"
+                + "Have a nice day,\n"
+                + "Certificate App.";
+
+        emailBody = emailBody.replace("[[name]]", user.getFirstName());
+        emailBody = emailBody.replace("[[CODE]]", user.getPasswordResetCode().getCode());
+
+        Email from = new Email(SENDER_EMAIL);
+        String subject = "CertifyHub account";
+        Email to = new Email(user.getEmail());
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(SENDGRID_API_KEY);
+
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+            response.getBody();
+        } catch (IOException ex) {
+            throw ex;
+        }
+    }
+
+    private void sendTwoFactorAuthEmail(User user) throws IOException {
         String emailBody = "Dear [[name]],\n"
                 + "Below you can find your code for verifying your login:\n"
                 + "[[CODE]]\n"
@@ -261,7 +361,7 @@ public class UserService implements IUserService {
             request.setEndpoint("mail/send");
             request.setBody(mail.build());
             Response response = sg.api(request);
-            return response.getBody();
+            response.getBody();
         } catch (IOException ex) {
             throw ex;
         }
@@ -291,11 +391,6 @@ public class UserService implements IUserService {
 
         Message.creator(new PhoneNumber(phoneNumber),
                 new PhoneNumber("+13184966544"), text).create();
-    }
-    private String encodePassword(String password) {
-        String salt = saltGenerator.generateSalt();
-        String saltedPassword = salt + password;
-        return passwordEncoder.encode(saltedPassword);
     }
 
     private boolean verifyPassword(String username, String password) throws NoSuchAlgorithmException {

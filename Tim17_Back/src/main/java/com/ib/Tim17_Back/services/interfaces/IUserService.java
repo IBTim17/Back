@@ -2,6 +2,7 @@ package com.ib.Tim17_Back.services.interfaces;
 
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
+import com.ib.Tim17_Back.exceptions.InvalidRecaptchaException;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,4 +24,9 @@ public interface IUserService{
     void resetPassword(PasswordResetRequestDTO passwordResetRequest) throws IncorrectCodeException, UserNotFoundException;
 
     Optional<User> findById(Long userId);
+
+    void confirmAccount(AccountConfirmationDTO accountConfirmationDTO);
+    boolean checkPasswordRenewal(String token);
+
+    Boolean verifyRecaptcha(String token) throws InvalidRecaptchaException;
 }

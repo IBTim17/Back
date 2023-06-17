@@ -39,8 +39,6 @@ public class User {
     @Column
     private String password;
     @Column
-    private LocalDateTime passwordLastChanged;
-    @Column
     private boolean isActivated;
 //    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.EAGER)
 //    private List<Certificate> certificates;

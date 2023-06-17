@@ -32,8 +32,7 @@ public class UserController {
             TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword(), login.getResource());
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity(new ErrorResponseMessage(
-                    "Bad credentials"), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -55,6 +54,19 @@ public class UserController {
         return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
     }
 
+    @PutMapping("/confirm")
+    public ResponseEntity<String> confirm(@Valid @RequestBody AccountConfirmationDTO accountConfirmationDTO) {
+        System.out.println("uso1");
+        try {
+            System.out.println("uso2");
+            this.userService.confirmAccount(accountConfirmationDTO);
+        } catch (Exception e) {
+            return new ResponseEntity(new ErrorResponseMessage(
+                    "Something went wrong!"), HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>("Account confirmed", HttpStatus.OK);
+    }
+
     @PostMapping(value = "/resetPassword", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> sendPasswordResetEmail(@Valid @RequestBody ResetPasswordDTO dto) throws IOException {
         userService.sendPasswordResetCode(dto);
@@ -65,5 +77,9 @@ public class UserController {
     public ResponseEntity<String> resetPassword(@RequestBody PasswordResetRequestDTO passwordResetRequest) throws Exception {
         userService.resetPassword(passwordResetRequest);
         return new ResponseEntity<>("Password successfully changed!",HttpStatus.OK);
+    }
+    @PostMapping(value = "/recaptcha/{token}")
+    public ResponseEntity<Boolean> recaptcha(@Valid @PathVariable(value = "token", required = true)String token){
+        return new ResponseEntity<>(this.userService.verifyRecaptcha(token), HttpStatus.OK);
     }
 }
