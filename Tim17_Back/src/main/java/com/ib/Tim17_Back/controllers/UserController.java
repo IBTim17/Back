@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.validation.Valid;
 import java.io.IOException;
@@ -21,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 public class UserController {
 
     private final UserService userService;
+    private static final Logger logger = LogManager.getLogger(UserController.class);
 
     public UserController(UserService userService, JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
         this.userService = userService;
@@ -30,8 +33,10 @@ public class UserController {
     public ResponseEntity<TokenDTO> logIn(@Valid @RequestBody LoginDTO login) {
         try {
             TokenDTO token = this.userService.logIn(login.getEmail(), login.getPassword(), login.getResource());
+            logger.info("Started login process");
             return new ResponseEntity<>(token, HttpStatus.OK);
         } catch (Exception e) {
+            logger.info("Login failed");
             return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
     }
@@ -46,19 +51,20 @@ public class UserController {
     public ResponseEntity<UserDTO> register(@Valid @RequestBody CreateUserDTO createUserDTO) {
         UserDTO registeredUserDTO = null;
         try {
+            logger.info("Started registration");
             registeredUserDTO = this.userService.register(createUserDTO);
         } catch (NoSuchAlgorithmException e) {
+            logger.info("Registration failed");
             return new ResponseEntity(new ErrorResponseMessage(
                     "Something went wrong!"), HttpStatus.BAD_REQUEST);
         }
+        logger.info("Successful registration");
         return new ResponseEntity<>(registeredUserDTO, HttpStatus.OK);
     }
 
     @PutMapping("/confirm")
     public ResponseEntity<String> confirm(@Valid @RequestBody AccountConfirmationDTO accountConfirmationDTO) {
-        System.out.println("uso1");
         try {
-            System.out.println("uso2");
             this.userService.confirmAccount(accountConfirmationDTO);
         } catch (Exception e) {
             return new ResponseEntity(new ErrorResponseMessage(
@@ -80,6 +86,7 @@ public class UserController {
     }
     @PostMapping(value = "/recaptcha/{token}")
     public ResponseEntity<Boolean> recaptcha(@Valid @PathVariable(value = "token", required = true)String token){
+        logger.info("User started recaptcha verification");
         return new ResponseEntity<>(this.userService.verifyRecaptcha(token), HttpStatus.OK);
     }
 }

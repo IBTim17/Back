@@ -3,7 +3,10 @@ package com.ib.Tim17_Back.controllers;
 import com.ib.Tim17_Back.dtos.CertificateDTO;
 import com.ib.Tim17_Back.dtos.RevokeRequestDTO;
 import com.ib.Tim17_Back.models.ErrorResponseMessage;
+import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -24,22 +28,28 @@ import java.util.zip.ZipOutputStream;
 public class CertificateController {
 
     private final ICertificateService certificateService;
+    private static final Logger logger = LogManager.getLogger(CertificateController.class);
 
-    public CertificateController(ICertificateService certificateService) {
+    private JwtTokenUtil jwtTokenUtil;
+
+    public CertificateController(ICertificateService certificateService, JwtTokenUtil tokenUtil) {
         this.certificateService = certificateService;
+        this.jwtTokenUtil = tokenUtil;
     }
 
     @GetMapping()
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<List<CertificateDTO>> getAll() {
+    public ResponseEntity<List<CertificateDTO>> getAll(@RequestHeader("x-auth-token") String token) {
+        logger.info("User with ID:{} requested all certificates", jwtTokenUtil.getId(token));
         List<CertificateDTO> certificates = this.certificateService.findAll();
         return new ResponseEntity<>(certificates, HttpStatus.OK);
     }
 
     @GetMapping("/valid/{serialNumber}")
-//    @PreAuthorize("hasAnyRole('ADMIN', 'USER')") TODO test
-    public ResponseEntity<Boolean> validate(@PathVariable String serialNumber)
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')") //TODO test
+    public ResponseEntity<Boolean> validate(@PathVariable String serialNumber, @RequestHeader("x-auth-token") String token)
     {
+        logger.info("User with ID:{} requested certificate validation", jwtTokenUtil.getId(token));
         return new ResponseEntity<>(this.certificateService.isValid(serialNumber), HttpStatus.OK);
     }
 
@@ -47,13 +57,14 @@ public class CertificateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<InputStreamResource> download(@PathVariable String id, @RequestHeader("x-auth-token") String token, HttpServletResponse response) {
         List<File> files = certificateService.getFileBySerialNumber(id, token);
-
+        logger.info("User with ID:{} requested to download certificate", jwtTokenUtil.getId(token));
         if (files.size() == 1) {
             InputStream inputStream = null;
             File file = files.get(0);
             try {
                 inputStream = new FileInputStream(file);
             } catch (FileNotFoundException e) {
+                logger.info("User with ID:{} requested to download nonexistent certificate", jwtTokenUtil.getId(token));
                 return null;
             }
             HttpHeaders headers = new HttpHeaders();
@@ -83,6 +94,7 @@ public class CertificateController {
                 }
             }
         } catch (IOException e) {
+            logger.info("User with ID:{} failed to download zip of certificate and key", jwtTokenUtil.getId(token));
             throw new RuntimeException(e);
         }
         return new ResponseEntity<>(HttpStatus.OK);
@@ -92,7 +104,9 @@ public class CertificateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<?> revoke(@PathVariable String serialNumber, @RequestHeader("x-auth-token") String token, @RequestBody RevokeRequestDTO reason)
     {
+        logger.info("User with ID:{} requested to revoke certificate", jwtTokenUtil.getId(token));
         this.certificateService.revoke(serialNumber, token, reason);
+        logger.info("User with ID:{} successfully revoked certificate", jwtTokenUtil.getId(token));
         return new ResponseEntity<>(new ErrorResponseMessage("Certificate is revoked successfully!"), HttpStatus.OK);
     }
 }
