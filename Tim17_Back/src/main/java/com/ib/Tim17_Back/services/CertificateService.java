@@ -15,9 +15,15 @@ import com.ib.Tim17_Back.security.jwt.JwtTokenUtil;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.math.BigInteger;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,5 +142,23 @@ public class CertificateService implements ICertificateService {
         for (Certificate crt: children) {
             revoke(crt.getSerialNumber(), "Parent certificate is revoked.");
         }
+    }
+
+    public X509Certificate convertMultipartFileToCert(MultipartFile file){
+        InputStream inputStream;
+        try {
+            inputStream = file.getInputStream();
+        } catch (IOException e) {
+            throw new CustomException("File could not be read");
+        }
+        CertificateFactory certificateFactory;
+        try {
+            certificateFactory = CertificateFactory.getInstance("X.509");
+            X509Certificate x509Cert = (X509Certificate) certificateFactory.generateCertificate(inputStream);
+            return x509Cert;
+        } catch (CertificateException e) {
+            throw new CustomException("Certificate had been modified");
+        }
+
     }
 }

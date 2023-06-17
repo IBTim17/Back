@@ -25,8 +25,11 @@ public interface IUserService{
 
     Optional<User> findById(Long userId);
 
+    TokenDTO googleToken(String email);
+
     void confirmAccount(AccountConfirmationDTO accountConfirmationDTO);
     boolean checkPasswordRenewal(String token);
 
     Boolean verifyRecaptcha(String token) throws InvalidRecaptchaException;
+
 }
