@@ -48,7 +48,7 @@ public class CertificateRequestController {
         Optional<User> user = userRepository.findById(Long.valueOf(userRequestValidation.getUserId(headers)));
         if (user.isEmpty())
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        List<CSRUserDTO> usersRequests = certificateRequestService.getUsersRequests(user.get());
+        List<CertificateDTO> usersRequests = certificateRequestService.getUsersRequests(user.get());
         return new ResponseEntity<>(usersRequests,HttpStatus.OK);
     }
 
