@@ -2,6 +2,7 @@ package com.ib.Tim17_Back.services.interfaces;
 
 import com.ib.Tim17_Back.dtos.*;
 import com.ib.Tim17_Back.exceptions.IncorrectCodeException;
+import com.ib.Tim17_Back.exceptions.InvalidRecaptchaException;
 import com.ib.Tim17_Back.exceptions.UserNotFoundException;
 import com.ib.Tim17_Back.models.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,8 +15,7 @@ import java.util.Optional;
 
 public interface IUserService{
     UserDetails findByUsername(String email);
-
-    TokenDTO logIn(String email, String password) throws Exception;
+    TokenDTO logIn(String email, String password, String resource) throws Exception;
 
     UserDTO register(CreateUserDTO createUserDTO) throws NoSuchAlgorithmException;
 
@@ -26,4 +26,10 @@ public interface IUserService{
     Optional<User> findById(Long userId);
 
     TokenDTO googleToken(String email);
+
+    void confirmAccount(AccountConfirmationDTO accountConfirmationDTO);
+    boolean checkPasswordRenewal(String token);
+
+    Boolean verifyRecaptcha(String token) throws InvalidRecaptchaException;
+
 }

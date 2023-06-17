@@ -8,6 +8,8 @@ import com.ib.Tim17_Back.repositories.CertificateRequestRepository;
 import com.ib.Tim17_Back.repositories.UserRepository;
 import com.ib.Tim17_Back.services.interfaces.ICertificateRequestService;
 import com.ib.Tim17_Back.validations.UserRequestValidation;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,6 +41,7 @@ public class CertificateRequestController {
     @Autowired
     CertificateRequestRepository certificateRequestRepository;
 
+    private static final Logger logger = LogManager.getLogger(CertificateRequestController.class);
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @GetMapping("/list-all")
     public ResponseEntity<?> userRequests(@RequestHeader Map<String, String> headers){

@@ -39,8 +39,6 @@ public class User {
     @Column
     private String password;
     @Column
-    private LocalDateTime passwordLastChanged;
-    @Column
     private boolean isActivated;
 //    @OneToMany(cascade = {CascadeType.REFRESH}, fetch = FetchType.EAGER)
 //    private List<Certificate> certificates;
@@ -48,6 +46,9 @@ public class User {
     private LocalDateTime lastLogin;
     @OneToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
     private ResetCode passwordResetCode;
+
+    @OneToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    private AuthCode authenticationCode;
 //    @Column(name = "last_password_reset_date")
 //    private Timestamp lastPasswordResetDate;
 

@@ -126,4 +126,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ErrorResponseMessage(ex.getMessage());
     }
 
+    @ExceptionHandler(value
+            = InvalidRecaptchaException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public @ResponseBody ErrorResponseMessage
+    handleException(InvalidRecaptchaException ex)
+    {
+        return new ErrorResponseMessage(ex.getMessage());
+    }
+
 }

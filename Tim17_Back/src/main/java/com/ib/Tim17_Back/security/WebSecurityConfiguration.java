@@ -65,6 +65,7 @@ public class WebSecurityConfiguration {
                 .configurationSource(request -> corsConfiguration)
                 .and()
                 .authorizeRequests()
+
                 .antMatchers("/api/user/login").permitAll()
                 .antMatchers("/api/user/resetPassword").permitAll()
                 .antMatchers("/api/requests").permitAll()
@@ -73,6 +74,9 @@ public class WebSecurityConfiguration {
                 .antMatchers("/api/user/register").permitAll()
                 .antMatchers("/api/certificate/isvalidcert").permitAll()
                 .antMatchers("/api/**").authenticated()
+                .antMatchers("/api/user/recaptcha/**").permitAll()
+                         
+
                 .and()
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint()
