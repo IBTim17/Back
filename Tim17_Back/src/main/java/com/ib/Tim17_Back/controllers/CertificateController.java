@@ -6,14 +6,22 @@ import com.ib.Tim17_Back.models.ErrorResponseMessage;
 import com.ib.Tim17_Back.services.interfaces.ICertificateService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
+import lombok.SneakyThrows;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import javax.mail.Multipart;
+import java.io.IOException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -95,4 +103,15 @@ public class CertificateController {
         this.certificateService.revoke(serialNumber, token, reason);
         return new ResponseEntity<>(new ErrorResponseMessage("Certificate is revoked successfully!"), HttpStatus.OK);
     }
+
+    @PostMapping("/isvalidcert")
+    @PreAuthorize("hasAnyRole('USER')")
+    public ResponseEntity<Boolean> isValidCert(@RequestParam MultipartFile file){
+        X509Certificate  certificateCopy= this.certificateService.convertMultipartFileToCert(file);
+        if (certificateCopy==null)
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(this.certificateService.isValid(String.valueOf(certificateCopy.getSerialNumber())),HttpStatus.OK);
+    }
+
+
 }
