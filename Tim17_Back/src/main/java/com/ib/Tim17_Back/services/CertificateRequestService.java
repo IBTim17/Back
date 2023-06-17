@@ -55,17 +55,17 @@ public class CertificateRequestService implements ICertificateRequestService {
 
     private static final Logger logger = LogManager.getLogger(CertificateRequestController.class);
     @Override
-    public List<CSRUserDTO> getUsersRequests(User user) throws UsernameNotFoundException {
+    public List<CertificateDTO> getUsersRequests(User user) throws UsernameNotFoundException {
         logger.info("User with ID:{} requested requests for new certificate", user.getId());
         List<CertificateRequest> userRequests = requestRepository.findAll();
-        List<CSRUserDTO> found = new ArrayList<>();
+        List<CertificateDTO> found = new ArrayList<>();
         if (!userRequests.isEmpty()){
             for (CertificateRequest request : userRequests){
                 if (user.getRole()==UserRole.ADMIN){
-                    found.add(new CSRUserDTO(request));
+                    found.add(new CertificateDTO(request));
                 }else {
                     if (request.getOwner().getEmail().equals(user.getEmail())){
-                        found.add(new CSRUserDTO(request));
+                        found.add(new CertificateDTO(request));
                     }
                 }
             }

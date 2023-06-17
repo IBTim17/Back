@@ -2,6 +2,7 @@ package com.ib.Tim17_Back.dtos;
 
 import com.ib.Tim17_Back.enums.CertificateType;
 import com.ib.Tim17_Back.models.Certificate;
+import com.ib.Tim17_Back.models.CertificateRequest;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,5 +30,14 @@ public class CertificateDTO {
         this.ownerName = certificate.getOwner().getFirstName();
         this.ownerLastName = certificate.getOwner().getLastName();
         this.serialNumber = certificate.getSerialNumber();
+    }
+
+    public CertificateDTO(CertificateRequest request) {
+        this.type = request.getType().toString();
+        //this.startDate = request.getStartDate();
+        this.ownerEmail = request.getOwner().getEmail();
+        this.ownerName = request.getOwner().getFirstName();
+        this.ownerLastName = request.getOwner().getLastName();
+        this.serialNumber = null;
     }
 }
