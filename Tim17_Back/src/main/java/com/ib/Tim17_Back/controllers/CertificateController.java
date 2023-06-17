@@ -121,10 +121,7 @@ public class CertificateController {
     @PostMapping("/isvalidcert")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Boolean> isValidCert(@RequestParam MultipartFile file){
-        X509Certificate  certificateCopy= this.certificateService.convertMultipartFileToCert(file);
-        if (certificateCopy==null)
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        return new ResponseEntity<>(this.certificateService.isValid(String.valueOf(certificateCopy.getSerialNumber())),HttpStatus.OK);
+        return new ResponseEntity<>(this.certificateService.convertMultipartFileToCert(file),HttpStatus.OK);
     }
 
 

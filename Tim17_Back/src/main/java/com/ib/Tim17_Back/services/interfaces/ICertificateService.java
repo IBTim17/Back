@@ -21,5 +21,5 @@ public interface ICertificateService {
     List<File> getFileBySerialNumber(String serialNumber, String token);
 
     void revoke(String serialNumber, String token, RevokeRequestDTO reason);
-    X509Certificate convertMultipartFileToCert(MultipartFile file);
+    Boolean convertMultipartFileToCert(MultipartFile file);
 }

@@ -144,17 +144,32 @@ public class CertificateService implements ICertificateService {
         }
     }
 
-    public X509Certificate convertMultipartFileToCert(MultipartFile file){
+    public Boolean convertMultipartFileToCert(MultipartFile file){
         InputStream inputStream;
         if(file.getSize() > 1073741824) {
             throw new CustomException("Upladed file is bigger than 1gb");
         }
 
-        String fileName = file.getOriginalFilename();
-        String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        System.out.println("CRT" + file.getOriginalFilename());
+        String originalFilename = file.getOriginalFilename();
+        originalFilename  = originalFilename.split("\\.")[0];
+        System.out.println("CRT2" + originalFilename);
+        BigInteger bigInteger = new BigInteger(originalFilename);
+        String fileName = bigInteger.toString(16);
+
+        if (fileName.length() % 2 != 0) {
+            fileName = "0" + fileName;
+        }
+        System.out.println("FN: " + fileName);
+//        91be8505ef6942f3b22a8d957de410bf
+//        91be8505ef6942f3b22a8d957de410bf
+
+//        String fileExtension = file.getOriginalFilename().substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        String fileExtension = file.getOriginalFilename().split("\\.")[1];
         if(!fileExtension.equals("crt")) {
             throw new CustomException("Uploaded file isn't .crt file");
         }
+
         try {
             inputStream = file.getInputStream();
         } catch (IOException e) {
@@ -164,7 +179,8 @@ public class CertificateService implements ICertificateService {
         try {
             certificateFactory = CertificateFactory.getInstance("X.509");
             X509Certificate x509Cert = (X509Certificate) certificateFactory.generateCertificate(inputStream);
-            return x509Cert;
+
+            return this.isValid(fileName);
         } catch (CertificateException e) {
             throw new CustomException("Certificate had been modified");
         }
